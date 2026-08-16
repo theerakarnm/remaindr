@@ -1843,7 +1843,7 @@ The brief's example shows two providers at once and AGENTS.md requires the budge
 
 **Steps:**
 
-- [ ] Step 1: Create `AIUsageBar/AIUsageBar/Models/CollapsedLabelText.swift`. Foundation only.
+- [x] Step 1: Create `AIUsageBar/AIUsageBar/Models/CollapsedLabelText.swift`. Foundation only.
 
       ```swift
       import Foundation
@@ -1930,7 +1930,7 @@ The brief's example shows two providers at once and AGENTS.md requires the budge
       }
       ```
 
-- [ ] Step 2: Create `AIUsageBar/AIUsageBar/UI/MenuBarLabel.swift`.
+- [x] Step 2: Create `AIUsageBar/AIUsageBar/UI/MenuBarLabel.swift`.
 
       ```swift
       import SwiftUI
@@ -1952,7 +1952,7 @@ The brief's example shows two providers at once and AGENTS.md requires the budge
       }
       ```
 
-- [ ] Step 3: Create `AIUsageBar/AIUsageBar/UI/DropdownPanel.swift`.
+- [x] Step 3: Create `AIUsageBar/AIUsageBar/UI/DropdownPanel.swift`.
 
       ```swift
       import SwiftUI
@@ -2034,7 +2034,7 @@ The brief's example shows two providers at once and AGENTS.md requires the budge
       }
       ```
 
-- [ ] Step 4: Verify - Run:
+- [x] Step 4: Verify - Run:
 
       ```bash
       mkdir -p /tmp/aiub-verify && cat > /tmp/aiub-verify/main.swift <<'EOF'
@@ -2093,8 +2093,8 @@ The brief's example shows two providers at once and AGENTS.md requires the budge
       MAX_LEN=14 BUDGET=14 WITHIN=true
       ```
 
-- [ ] Step 5: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
-- [ ] Step 6: Commit - `git add AIUsageBar/AIUsageBar/Models/CollapsedLabelText.swift AIUsageBar/AIUsageBar/UI/MenuBarLabel.swift AIUsageBar/AIUsageBar/UI/DropdownPanel.swift && git commit -m "feat: add collapsed label text budget, menu bar label, and dropdown panel"`
+- [x] Step 5: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
+- [x] Step 6: Commit - `git add AIUsageBar/AIUsageBar/Models/CollapsedLabelText.swift AIUsageBar/AIUsageBar/UI/MenuBarLabel.swift AIUsageBar/AIUsageBar/UI/DropdownPanel.swift && git commit -m "feat: add collapsed label text budget, menu bar label, and dropdown panel"`
 
 ---
 
