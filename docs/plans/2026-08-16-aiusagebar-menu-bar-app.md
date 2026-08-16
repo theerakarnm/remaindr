@@ -129,7 +129,7 @@ Copy them exactly; a duplicate or short identifier makes `xcodebuild` reject the
 
 **Steps:**
 
-- [ ] Step 1: Create `AIUsageBar/AIUsageBar/App/AIUsageBarApp.swift`.
+- [x] Step 1: Create `AIUsageBar/AIUsageBar/App/AIUsageBarApp.swift`.
 
       ```swift
       import SwiftUI
@@ -148,7 +148,7 @@ Copy them exactly; a duplicate or short identifier makes `xcodebuild` reject the
       }
       ```
 
-- [ ] Step 2: Create `AIUsageBar/AIUsageBar.xcodeproj/project.pbxproj` with exactly this content.
+- [x] Step 2: Create `AIUsageBar/AIUsageBar.xcodeproj/project.pbxproj` with exactly this content.
 
       ```
       // !$*UTF8*$!
@@ -382,7 +382,7 @@ Copy them exactly; a duplicate or short identifier makes `xcodebuild` reject the
       }
       ```
 
-- [ ] Step 3: Create `AIUsageBar/AIUsageBar.xcodeproj/xcshareddata/xcschemes/AIUsageBar.xcscheme`. A shared scheme is required; without it `xcodebuild -scheme AIUsageBar` cannot find one, because scheme auto-creation only happens when the project is opened in Xcode.
+- [x] Step 3: Create `AIUsageBar/AIUsageBar.xcodeproj/xcshareddata/xcschemes/AIUsageBar.xcscheme`. A shared scheme is required; without it `xcodebuild -scheme AIUsageBar` cannot find one, because scheme auto-creation only happens when the project is opened in Xcode.
 
       ```xml
       <?xml version="1.0" encoding="UTF-8"?>
@@ -431,7 +431,7 @@ Copy them exactly; a duplicate or short identifier makes `xcodebuild` reject the
       </Scheme>
       ```
 
-- [ ] Step 4: Create `AIUsageBar/README.md` as a short setup note only, one sentence per line. The outer fence below is four backticks because the file's own content contains a three-backtick block; write the file with the normal three-backtick form inside it.
+- [x] Step 4: Create `AIUsageBar/README.md` as a short setup note only, one sentence per line. The outer fence below is four backticks because the file's own content contains a three-backtick block; write the file with the normal three-backtick form inside it.
 
       ````markdown
       # AIUsageBar
@@ -464,10 +464,10 @@ Copy them exactly; a duplicate or short identifier makes `xcodebuild` reject the
       macOS may ask for permission to read the app's own Keychain items after a rebuild; choose Always Allow.
       ````
 
-- [ ] Step 5: Verify - Run: `cd AIUsageBar && xcodebuild -list -project AIUsageBar.xcodeproj` - Expected: output contains a `Schemes:` section listing `AIUsageBar`, and a `Targets:` section listing `AIUsageBar`.
-- [ ] Step 6: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
-- [ ] Step 7: Verify - Run: `/usr/libexec/PlistBuddy -c "Print :LSUIElement" AIUsageBar/.build/Build/Products/Debug/AIUsageBar.app/Contents/Info.plist && /usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" AIUsageBar/.build/Build/Products/Debug/AIUsageBar.app/Contents/Info.plist` - Expected: `true` then `14.0`.
-- [ ] Step 8: Create `AIUsageBar/.gitignore` containing the single line `.build/`, then Commit - `git add AIUsageBar/.gitignore AIUsageBar/README.md AIUsageBar/AIUsageBar.xcodeproj AIUsageBar/AIUsageBar && git commit -m "feat: add AIUsageBar Xcode project skeleton with menu bar scene"`
+- [x] Step 5: Verify - Run: `cd AIUsageBar && xcodebuild -list -project AIUsageBar.xcodeproj` - Expected: output contains a `Schemes:` section listing `AIUsageBar`, and a `Targets:` section listing `AIUsageBar`.
+- [x] Step 6: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
+- [x] Step 7: Verify - Run: `/usr/libexec/PlistBuddy -c "Print :LSUIElement" AIUsageBar/.build/Build/Products/Debug/AIUsageBar.app/Contents/Info.plist && /usr/libexec/PlistBuddy -c "Print :LSMinimumSystemVersion" AIUsageBar/.build/Build/Products/Debug/AIUsageBar.app/Contents/Info.plist` - Expected: `true` then `14.0`.
+- [x] Step 8: Create `AIUsageBar/.gitignore` containing the single line `.build/`, then Commit - `git add AIUsageBar/.gitignore AIUsageBar/README.md AIUsageBar/AIUsageBar.xcodeproj AIUsageBar/AIUsageBar && git commit -m "feat: add AIUsageBar Xcode project skeleton with menu bar scene"`
 
 ---
 
