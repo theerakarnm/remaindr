@@ -1339,7 +1339,7 @@ The header fallback needs a **billed** `POST /v1/messages` call; a 401 response 
 
 **Steps:**
 
-- [ ] Step 1: Create `AIUsageBar/AIUsageBar/Providers/ClaudeProvider.swift`.
+- [x] Step 1: Create `AIUsageBar/AIUsageBar/Providers/ClaudeProvider.swift`.
 
       ```swift
       import Foundation
@@ -1508,7 +1508,7 @@ The header fallback needs a **billed** `POST /v1/messages` call; a 401 response 
       }
       ```
 
-- [ ] Step 2: Verify - Run:
+- [x] Step 2: Verify - Run:
 
       ```bash
       mkdir -p /tmp/aiub-verify/empty && cat > /tmp/aiub-verify/main.swift <<'EOF'
@@ -1552,10 +1552,12 @@ The header fallback needs a **billed** `POST /v1/messages` call; a 401 response 
       NO_HEADERS=nil
       ```
 
-- [ ] Step 3: Verify - Run: `/tmp/aiub-verify/claude` is unchanged, then scan the real directory: `mkdir -p /tmp/aiub-verify && printf 'import Foundation\nlet b = ClaudeProvider.scanBlocks(in: ClaudeProvider.defaultProjectsDirectory)\nprint("real_blocks=\\(b.count) nonzero=\\(b.allSatisfy { $0.totalTokens >= 0 })")\n' > /tmp/aiub-verify/real.swift && mv /tmp/aiub-verify/real.swift /tmp/aiub-verify/main.swift && swiftc -swift-version 6 AIUsageBar/AIUsageBar/Models/ProviderStatus.swift AIUsageBar/AIUsageBar/Providers/UsageProvider.swift AIUsageBar/AIUsageBar/Keychain/KeychainStore.swift AIUsageBar/AIUsageBar/Providers/ClaudeSessionBlocks.swift AIUsageBar/AIUsageBar/Providers/ClaudeProvider.swift /tmp/aiub-verify/main.swift -o /tmp/aiub-verify/claudereal && time /tmp/aiub-verify/claudereal` - Expected: `real_blocks=` followed by a number greater than 0 and `nonzero=true`, completing in under 30 seconds. If the machine has no `~/.claude/projects`, `real_blocks=0` is also a pass and the Claude row will read "Not configured".
-- [ ] Step 4: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
-- [ ] Step 5: 👤 Verify - Human: **only if the user explicitly consents to a billed API call**, enable the header fallback in Settings with a real Anthropic API key and refresh - Expected: the Claude row switches to "API input tokens per minute, from response headers" with a percentage - Proxy: Step 2 asserts `statusFromHeaders` against a synthesised `HTTPURLResponse` carrying the exact documented header names, and asserts nil for a 401 with no headers. **Do not run this without asking; it sends a real `POST /v1/messages` and is billed.**
-- [ ] Step 6: Commit - `git add AIUsageBar/AIUsageBar/Providers/ClaudeProvider.swift && git commit -m "feat: add Claude provider with session-file primary and header fallback"`
+- [x] Step 3: Verify - Run: `/tmp/aiub-verify/claude` is unchanged, then scan the real directory: `mkdir -p /tmp/aiub-verify && printf 'import Foundation\nlet b = ClaudeProvider.scanBlocks(in: ClaudeProvider.defaultProjectsDirectory)\nprint("real_blocks=\\(b.count) nonzero=\\(b.allSatisfy { $0.totalTokens >= 0 })")\n' > /tmp/aiub-verify/real.swift && mv /tmp/aiub-verify/real.swift /tmp/aiub-verify/main.swift && swiftc -swift-version 6 AIUsageBar/AIUsageBar/Models/ProviderStatus.swift AIUsageBar/AIUsageBar/Providers/UsageProvider.swift AIUsageBar/AIUsageBar/Keychain/KeychainStore.swift AIUsageBar/AIUsageBar/Providers/ClaudeSessionBlocks.swift AIUsageBar/AIUsageBar/Providers/ClaudeProvider.swift /tmp/aiub-verify/main.swift -o /tmp/aiub-verify/claudereal && time /tmp/aiub-verify/claudereal` - Expected: `real_blocks=` followed by a number greater than 0 and `nonzero=true`, completing in under 30 seconds. If the machine has no `~/.claude/projects`, `real_blocks=0` is also a pass and the Claude row will read "Not configured".
+      > Deviation: two runs printed `real_blocks=71 nonzero=true` (the substantive assertion), but wall-clock was ~35.9-36.8s against this machine's ~1604 session files, over the 30s budget the plan author measured on their own hardware at planning time. The code is exactly the plan's reference implementation, run off the main actor as specified; nothing later in the plan depends on this timing.
+- [x] Step 4: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
+- [ ] 👤 Step 5: Verify - Human: **only if the user explicitly consents to a billed API call**, enable the header fallback in Settings with a real Anthropic API key and refresh - Expected: the Claude row switches to "API input tokens per minute, from response headers" with a percentage - Proxy: Step 2 asserts `statusFromHeaders` against a synthesised `HTTPURLResponse` carrying the exact documented header names, and asserts nil for a 401 with no headers. **Do not run this without asking; it sends a real `POST /v1/messages` and is billed.**
+      > Awaiting human: not run. This requires explicit user consent to a billed `POST /v1/messages` call plus a real Anthropic API key, neither of which was given during this automated run.
+- [x] Step 6: Commit - `git add AIUsageBar/AIUsageBar/Providers/ClaudeProvider.swift && git commit -m "feat: add Claude provider with session-file primary and header fallback"`
 
 ---
 
