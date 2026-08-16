@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository.
 
 ## Project
 
-**AIUsageBar** — a macOS menu bar utility (SwiftUI `MenuBarExtra`) that shows remaining usage/quota for three AI providers at a glance: Claude, z.ai (GLM), and DeepSeek. Lives permanently in the menu bar (`LSUIElement`, no Dock icon). Rename freely if a different app name is chosen later — search for `AIUsageBar` across the project when renaming.
+**Remaindr** — a macOS menu bar utility (SwiftUI `MenuBarExtra`) that shows remaining usage/quota for three AI providers at a glance: Claude, z.ai (GLM), and DeepSeek. Lives permanently in the menu bar (`LSUIElement`, no Dock icon). Rename freely if a different app name is chosen later — search for `Remaindr` across the project when renaming.
 
 ## Stack
 
@@ -17,7 +17,7 @@ Guidance for Claude Code when working in this repository.
 ## Architecture
 
 ```
-AIUsageBar/
+Remaindr/
   App/                  # App entry point, MenuBarExtra scene
   Providers/
     UsageProvider.swift  # protocol all providers conform to
@@ -73,8 +73,8 @@ Every provider client sits behind the `UsageProvider` protocol and returns a com
 ## Commands
 
 ```bash
-xcodebuild -scheme AIUsageBar build      # build
-xcodebuild -scheme AIUsageBar test       # run tests, if/when added
+xcodebuild -scheme Remaindr build      # build
+xcodebuild -scheme Remaindr test       # run tests, if/when added
 ```
 
 Build must succeed with zero warnings before a task is considered done.

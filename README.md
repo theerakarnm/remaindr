@@ -1,8 +1,6 @@
-# AIUsageBar
+# Remaindr
 
 A macOS menu bar utility that shows your remaining usage and balance across three AI providers at a glance — **Claude**, **z.ai (GLM)**, and **DeepSeek** — without opening a browser or a dashboard.
-
-> Working name. Rename freely — see [Renaming](#renaming) below.
 
 <!-- ![Menu bar screenshot](docs/screenshot.png) -->
 
@@ -30,7 +28,7 @@ A macOS menu bar utility that shows your remaining usage and balance across thre
 
 ## Why
 
-If you're paying for or metering usage across multiple AI providers, checking "how much do I have left" usually means three different tabs, three different logins, and three different mental models of what "usage" even means. AIUsageBar puts all three in one menu bar dropdown, refreshed on a timer, with no dashboard required.
+If you're paying for or metering usage across multiple AI providers, checking "how much do I have left" usually means three different tabs, three different logins, and three different mental models of what "usage" even means. Remaindr puts all three in one menu bar dropdown, refreshed on a timer, with no dashboard required.
 
 ## Features
 
@@ -44,7 +42,7 @@ If you're paying for or metering usage across multiple AI providers, checking "h
 
 ## How each provider is measured
 
-The three providers don't expose usage the same way, so AIUsageBar doesn't force them into one shape:
+The three providers don't expose usage the same way, so Remaindr doesn't force them into one shape:
 
 | Provider | What's shown | Source |
 |---|---|---|
@@ -66,7 +64,7 @@ Claude has no public "remaining subscription quota" API, so its number is an est
 ## Installation
 
 1. Download the latest release from the [Releases](../../releases) page, **or** build from source (see below).
-2. Move `AIUsageBar.app` to `/Applications`.
+2. Move `Remaindr.app` to `/Applications`.
 3. Launch it — a new icon appears in your menu bar.
 
 > Not notarized/signed yet during early development — macOS Gatekeeper may warn on first launch. Right-click → Open to bypass, or build from source.
@@ -98,7 +96,7 @@ Providers with no key configured simply show "Not configured" and are skipped on
 ## Project structure
 
 ```
-AIUsageBar/
+Remaindr/
   App/                   # App entry point, MenuBarExtra scene
   Providers/
     UsageProvider.swift   # shared protocol every provider implements
@@ -122,15 +120,15 @@ See [`CLAUDE.md`](./CLAUDE.md) for the fuller architectural rules this project i
 ## Building from source
 
 ```bash
-git clone https://github.com/<your-org>/AIUsageBar.git
-cd AIUsageBar
-open AIUsageBar.xcodeproj   # or .xcworkspace, depending on setup
+git clone https://github.com/<your-org>/Remaindr.git
+cd Remaindr
+open Remaindr.xcodeproj   # or .xcworkspace, depending on setup
 ```
 
 Build and run from Xcode (⌘R), or from the command line:
 
 ```bash
-xcodebuild -scheme AIUsageBar build
+xcodebuild -scheme Remaindr build
 ```
 
 Build must complete with zero warnings — this is enforced project convention, not just a suggestion.
@@ -153,10 +151,10 @@ Build must complete with zero warnings — this is enforced project convention, 
 
 ## Renaming
 
-The working name is `AIUsageBar`. To rename:
+The app name is `Remaindr`. To rename:
 
 1. Update the Xcode project/target name and bundle identifier.
-2. Search the codebase for `AIUsageBar` and replace with the new name.
+2. Search the codebase for `Remaindr` and replace with the new name.
 3. Update this README and `CLAUDE.md`.
 
 ## Contributing
