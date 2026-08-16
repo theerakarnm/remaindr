@@ -680,7 +680,7 @@ Never log the value, and never include it in a thrown error.
 
 **Steps:**
 
-- [ ] Step 1: Create `AIUsageBar/AIUsageBar/Keychain/KeychainStore.swift`.
+- [x] Step 1: Create `AIUsageBar/AIUsageBar/Keychain/KeychainStore.swift`.
 
       ```swift
       import Foundation
@@ -752,7 +752,7 @@ Never log the value, and never include it in a thrown error.
       }
       ```
 
-- [ ] Step 2: Verify - Run:
+- [x] Step 2: Verify - Run:
 
       ```bash
       mkdir -p /tmp/aiub-verify && cat > /tmp/aiub-verify/main.swift <<'EOF'
@@ -780,9 +780,9 @@ Never log the value, and never include it in a thrown error.
       AFTER_REMOVE=nil
       ```
 
-- [ ] Step 3: Verify - Run: `defaults read com.theerakarn.AIUsageBar 2>&1 | grep -ci 'sk-verify-123' || true` - Expected: `0`, proving the value never reached `UserDefaults`. A `Domain ... does not exist` message on stderr is also a pass.
-- [ ] Step 4: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
-- [ ] Step 5: Commit - `git add AIUsageBar/AIUsageBar/Keychain/KeychainStore.swift && git commit -m "feat: add Keychain-only credential store"`
+- [x] Step 3: Verify - Run: `defaults read com.theerakarn.AIUsageBar 2>&1 | grep -ci 'sk-verify-123' || true` - Expected: `0`, proving the value never reached `UserDefaults`. A `Domain ... does not exist` message on stderr is also a pass.
+- [x] Step 4: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
+- [x] Step 5: Commit - `git add AIUsageBar/AIUsageBar/Keychain/KeychainStore.swift && git commit -m "feat: add Keychain-only credential store"`
 
 ---
 
