@@ -42,9 +42,11 @@ Every provider client sits behind the `UsageProvider` protocol and returns a com
 
 - **Claude** — the numbers must match what Claude Code itself shows.
   1. Primary: `GET https://api.anthropic.com/api/oauth/usage` (headers `Authorization: Bearer`, `anthropic-beta: oauth-2025-04-20`), the same source `/usage` uses.
-     It reports `five_hour.utilization`/`resets_at` and `seven_day.*` (newer accounts carry the same windows in `limits[]` as kind `session`/`weekly_all`).
+     It reports `five_hour.utilization`/`resets_at` and `seven_day.*`.
+     Newer accounts carry the same windows in `limits[]` as kind `session`/`weekly_all`.
      Authenticated with the OAuth credential Claude Code stores in the login Keychain under service `Claude Code-credentials` (blob key `claudeAiOauth.accessToken`).
-     Read-only; it does not consume plan usage. The token is never logged or persisted.
+     Read-only; it does not consume plan usage.
+     The token is never logged or persisted.
   2. Fallback: parse local session files at `~/.claude/projects/**/*.jsonl`, aggregate token usage into rolling 5-hour blocks (ccusage-style).
   3. Last resort: if an API key is present, read `anthropic-ratelimit-*` response headers from a cheap request, or the Admin usage endpoint if an admin key is configured.
   4. If none is available: render "Not configured." Never fabricate a number.
