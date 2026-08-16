@@ -6,9 +6,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "AA0000000000000000000060"
-               BuildableName = "AIUsageBar.app"
-               BlueprintName = "AIUsageBar"
-               ReferencedContainer = "container:AIUsageBar.xcodeproj">
+               BuildableName = "Remaindr.app"
+               BlueprintName = "Remaindr"
+               ReferencedContainer = "container:Remaindr.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -22,9 +22,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "AA0000000000000000000060"
-            BuildableName = "AIUsageBar.app"
-            BlueprintName = "AIUsageBar"
-            ReferencedContainer = "container:AIUsageBar.xcodeproj">
+            BuildableName = "Remaindr.app"
+            BlueprintName = "Remaindr"
+            ReferencedContainer = "container:Remaindr.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -33,9 +33,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "AA0000000000000000000060"
-            BuildableName = "AIUsageBar.app"
-            BlueprintName = "AIUsageBar"
-            ReferencedContainer = "container:AIUsageBar.xcodeproj">
+            BuildableName = "Remaindr.app"
+            BlueprintName = "Remaindr"
+            ReferencedContainer = "container:Remaindr.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

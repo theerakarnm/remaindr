@@ -10,7 +10,7 @@ enum KeychainError: Error, Equatable {
 struct KeychainStore: Sendable {
     let service: String
 
-    init(service: String = "com.theerakarn.AIUsageBar") {
+    init(service: String = "com.theerakarn.Remaindr") {
         self.service = service
     }
 

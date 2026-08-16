@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct AIUsageBarApp: App {
+struct RemaindrApp: App {
     @State private var preferences: Preferences
     @State private var store: ProviderStore
     @State private var scheduler: RefreshScheduler
