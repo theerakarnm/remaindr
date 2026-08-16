@@ -20,7 +20,8 @@ The app has no Dock icon; look for the gauge glyph in the menu bar.
 
 Keys are entered in the app's Settings window and stored in the macOS Keychain under service `com.theerakarn.AIUsageBar`.
 They are never written to `UserDefaults` or to any file in this repository.
-Claude needs no key: it reads local session files under `~/.claude/projects/`.
+Claude needs no key: it reads the plan-usage percentages Anthropic reports for the account signed in to Claude Code, authenticating with the OAuth credential Claude Code already stores in the login Keychain.
+When that is unavailable (signed out, offline), it falls back to local session files under `~/.claude/projects/`.
 
 ## Note on rebuilds
 
