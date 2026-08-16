@@ -949,7 +949,7 @@ The endpoint is undocumented; the response shape below comes from a captured liv
 
 **Steps:**
 
-- [ ] Step 1: Create `AIUsageBar/AIUsageBar/Providers/ZAIProvider.swift`.
+- [x] Step 1: Create `AIUsageBar/AIUsageBar/Providers/ZAIProvider.swift`.
 
       ```swift
       import Foundation
@@ -1097,7 +1097,7 @@ The endpoint is undocumented; the response shape below comes from a captured liv
       }
       ```
 
-- [ ] Step 2: Verify - Run:
+- [x] Step 2: Verify - Run:
 
       ```bash
       mkdir -p /tmp/aiub-verify && cat > /tmp/aiub-verify/main.swift <<'EOF'
@@ -1132,10 +1132,11 @@ The endpoint is undocumented; the response shape below comes from a captured liv
       nolimits=Bad response
       ```
 
-- [ ] Step 3: Verify - Manual: `curl -s -m 15 -w '\nHTTP %{http_code}\n' -H 'Authorization: Bearer sk-invalid-probe' https://api.z.ai/api/monitor/usage/quota/limit` - Expected: body `{"code":401,"msg":"token expired or incorrect","success":false}` then `HTTP 200`, confirming the endpoint is live and that auth failure really does arrive inside a 200. This call carries no real key and consumes nothing.
-- [ ] Step 4: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
-- [ ] Step 5: 👤 Verify - Human: with a real z.ai GLM Coding Plan key in Settings, click Refresh and compare the z.ai row against the usage figure on the z.ai subscription page - Expected: the two percentages agree, and the header-form fallback did not fire (the row is not "Key rejected") - Proxy: Step 2 asserts the exact window-selection and every error branch off the captured live payload, and Step 3 proves the live endpoint's 200-with-`success:false` behaviour.
-- [ ] Step 6: Commit - `git add AIUsageBar/AIUsageBar/Providers/ZAIProvider.swift && git commit -m "feat: add z.ai GLM quota provider"`
+- [x] Step 3: Verify - Manual: `curl -s -m 15 -w '\nHTTP %{http_code}\n' -H 'Authorization: Bearer sk-invalid-probe' https://api.z.ai/api/monitor/usage/quota/limit` - Expected: body `{"code":401,"msg":"token expired or incorrect","success":false}` then `HTTP 200`, confirming the endpoint is live and that auth failure really does arrive inside a 200. This call carries no real key and consumes nothing.
+- [x] Step 4: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
+- [ ] 👤 Step 5: Verify - Human: with a real z.ai GLM Coding Plan key in Settings, click Refresh and compare the z.ai row against the usage figure on the z.ai subscription page - Expected: the two percentages agree, and the header-form fallback did not fire (the row is not "Key rejected") - Proxy: Step 2 asserts the exact window-selection and every error branch off the captured live payload, and Step 3 proves the live endpoint's 200-with-`success:false` behaviour.
+      > Awaiting human: no z.ai GLM Coding Plan key was supplied during this run. Paste one into Settings > API keys > z.ai, click Refresh, and compare the row's percentage to the z.ai subscription page.
+- [x] Step 6: Commit - `git add AIUsageBar/AIUsageBar/Providers/ZAIProvider.swift && git commit -m "feat: add z.ai GLM quota provider"`
 
 ---
 
