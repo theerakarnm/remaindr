@@ -24,7 +24,7 @@ xcodebuild -project "$APP_NAME/$APP_NAME.xcodeproj" \
            build
 
 APP_PATH="$DERIVED/Build/Products/$CONFIG/$APP_NAME.app"
-VERSION=$(defaults read "$APP_PATH/Contents/Info" CFBundleShortVersionString)
+VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_PATH/Contents/Info.plist")
 DMG="build/$APP_NAME-$VERSION.dmg"
 
 # 2. Stage a clean folder: the .app + an /Applications shortcut
