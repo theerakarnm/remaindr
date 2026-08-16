@@ -54,8 +54,6 @@ struct ClaudeAccountUsage: Sendable, Equatable {
         let (data, response): (Data, URLResponse)
         do {
             (data, response) = try await session.data(for: request)
-        } catch let error as URLError {
-            throw ClaudeProvider.transportFailure(error)
         }
         guard let http = response as? HTTPURLResponse else {
             throw ProviderError.malformedResponse("no HTTP response")

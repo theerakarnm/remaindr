@@ -63,7 +63,12 @@ struct ClaudeProvider: UsageProvider {
     /// drives the primary meter and reset countdown; the weekly limit, when the account
     /// reports one, rides along as the stacked back layer.
     private func accountUsageStatus(now: Date) async throws -> ProviderStatus {
-        let usage = try await ClaudeAccountUsage.fetch(keychain: keychain, session: session)
+        let usage: ClaudeAccountUsage
+        do {
+            usage = try await ClaudeAccountUsage.fetch(keychain: keychain, session: session)
+        } catch {
+            throw mapTransportFailure(error)
+        }
         return ProviderStatus(
             kind: .claude,
             reading: .fraction(used: usage.fiveHourUsedFraction, resetsAt: usage.fiveHourResetsAt),
@@ -71,19 +76,6 @@ struct ClaudeProvider: UsageProvider {
             fetchedAt: now,
             weekly: usage.weekly
         )
-    }
-
-    /// Shared shape of a transport failure so the account client and the probe map the
-    /// same `URLError`s onto `.offline`.
-    static func transportFailure(_ error: URLError) -> ProviderError {
-        switch error.code {
-        case .notConnectedToInternet, .networkConnectionLost, .cannotFindHost,
-             .cannotConnectToHost, .dnsLookupFailed, .timedOut, .internationalRoamingOff,
-             .dataNotAllowed, .secureConnectionFailed:
-            return .offline
-        default:
-            return .serverError(status: 0)
-        }
     }
 
     // MARK: - Local session files
