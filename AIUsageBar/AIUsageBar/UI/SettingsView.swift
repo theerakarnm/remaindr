@@ -13,6 +13,27 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            // First, because the collapsed label reports exactly one provider and this is
+            // the only control that decides which. The window is a fixed 450pt tall and the
+            // form is longer than that, so anything below "Refresh" needs scrolling to find.
+            Section("Menu bar") {
+                Picker("Shows", selection: Binding(
+                    get: { preferences.menuBarProvider },
+                    set: { preferences.menuBarProvider = $0 }
+                )) {
+                    ForEach(ProviderKind.allCases) { kind in
+                        Label {
+                            Text(kind.displayName)
+                        } icon: {
+                            if let glyph = ProviderGlyph.image(for: kind, size: 14) {
+                                Image(nsImage: glyph)
+                            }
+                        }
+                        .tag(kind)
+                    }
+                }
+            }
+
             Section("API keys") {
                 ForEach(ProviderKind.allCases.filter { $0 != .claude }) { kind in
                     keyRow(kind)
@@ -38,14 +59,6 @@ struct SettingsView: View {
                     set: { preferences.refreshIntervalMinutes = $0; scheduler.reschedule() }
                 ), in: 1...60) {
                     Text("Every \(preferences.refreshIntervalMinutes) min")
-                }
-                Picker("Menu bar shows", selection: Binding(
-                    get: { preferences.labelSource },
-                    set: { preferences.labelSource = $0 }
-                )) {
-                    ForEach(LabelSource.allCases, id: \.self) { source in
-                        Text(source.displayName).tag(source)
-                    }
                 }
             }
 
@@ -76,19 +89,38 @@ struct SettingsView: View {
     }
 
     @ViewBuilder
+    private func statusBadge(for kind: ProviderKind) -> some View {
+        if savedKinds.contains(kind) {
+            Label("Set", systemImage: "checkmark.circle.fill")
+                .labelStyle(.iconOnly)
+                .foregroundStyle(.green)
+                .help("\(kind.displayName) key is saved in Keychain")
+        } else {
+            Label("Not set", systemImage: "circle")
+                .labelStyle(.iconOnly)
+                .foregroundStyle(.secondary)
+                .help("No \(kind.displayName) key saved")
+        }
+    }
+
+    @ViewBuilder
     private func keyRow(_ kind: ProviderKind) -> some View {
         // The stored value is never read back into the field: presence only.
-        LabeledContent(kind.displayName) {
+        LabeledContent {
             HStack {
-                SecureField(savedKinds.contains(kind) ? "Key saved" : "Paste key",
-                            text: Binding(
-                                get: { draftKeys[kind] ?? "" },
-                                set: { draftKeys[kind] = $0 }
-                            ))
+                SecureField("Paste key", text: Binding(
+                    get: { draftKeys[kind] ?? "" },
+                    set: { draftKeys[kind] = $0 }
+                ))
                 Button("Save") { save(kind) }
                     .disabled((draftKeys[kind] ?? "").isEmpty)
                 Button("Clear") { clear(kind) }
                     .disabled(!savedKinds.contains(kind))
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(kind.displayName)
+                statusBadge(for: kind)
             }
         }
     }

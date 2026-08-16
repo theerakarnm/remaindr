@@ -3,50 +3,27 @@ import Foundation
 /// Builds the collapsed menu bar string. Foundation-only on purpose, so the width budget
 /// is checkable without a running app.
 enum CollapsedLabelText {
-    /// Hard character budget for the text beside the SF Symbol.
+    /// Hard character budget for the text beside the provider glyph.
     static let budget = 14
 
-    /// Joined with a bare middot: " · " with spaces overflows the budget at three providers.
-    private static let separator = "\u{00B7}"
-
-    static func text(for slots: [ProviderKind: ProviderSlot], source: LabelSource) -> String {
-        switch source {
-        case .provider(let kind):
-            return clamp(single(slots[kind], kind: kind))
-        case .allConfigured:
-            let parts = ProviderKind.allCases.compactMap { kind -> String? in
-                guard let slot = slots[kind] else { return nil }
-                if slot.status == nil, slot.error == .notConfigured || slot.error == nil { return nil }
-                return single(slot, kind: kind)
-            }
-            return clamp(parts.isEmpty ? "Not set up" : parts.joined(separator: separator))
-        }
+    /// The label reports exactly one provider, and the glyph beside it says which one, so
+    /// no short-name prefix is needed here.
+    static func text(for slot: ProviderSlot?) -> String {
+        clamp(single(slot))
     }
 
-    /// A warning glyph only when something actually failed. "Not configured" is not a failure.
-    static func symbolName(for slots: [ProviderKind: ProviderSlot], source: LabelSource) -> String {
-        let relevant: [ProviderSlot]
-        switch source {
-        case .provider(let kind): relevant = [slots[kind]].compactMap { $0 }
-        case .allConfigured: relevant = Array(slots.values)
-        }
-        let failing = relevant.contains { slot in
-            guard let error = slot.error else { return false }
-            return error != .notConfigured
-        }
-        return failing ? "exclamationmark.triangle" : "gauge.with.needle"
-    }
-
-    private static func single(_ slot: ProviderSlot?, kind: ProviderKind) -> String {
-        guard let slot else { return "\(kind.shortName) --" }
+    private static func single(_ slot: ProviderSlot?) -> String {
+        guard let slot else { return "--" }
         if let status = slot.status {
             let value = format(status.reading)
             return slot.error == nil ? value : "\(value)!"
         }
+        // A bare "!" rather than the error text: spelling out "Offline" or "Server error 500"
+        // would resize the status item on every failure kind. The dropdown carries the reason.
         if let error = slot.error, error != .notConfigured {
-            return "\(kind.shortName)!"
+            return "--!"
         }
-        return "\(kind.shortName) --"
+        return "--"
     }
 
     private static func format(_ reading: ProviderReading) -> String {

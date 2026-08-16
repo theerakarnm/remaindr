@@ -1,17 +1,21 @@
 import SwiftUI
 
-/// The collapsed menu bar item: one SF Symbol plus one short string, driven by whichever
-/// source the user picked in Settings.
+/// The collapsed menu bar item: the chosen provider's monochrome glyph plus one short
+/// string. Exactly one provider, picked in Settings.
 struct MenuBarLabel: View {
     let store: ProviderStore
     let preferences: Preferences
 
     var body: some View {
-        let source = preferences.labelSource
+        let kind = preferences.menuBarProvider
         HStack(spacing: 3) {
-            Image(systemName: CollapsedLabelText.symbolName(for: store.slots, source: source))
-            Text(CollapsedLabelText.text(for: store.slots, source: source))
+            if let glyph = ProviderGlyph.image(for: kind, size: ProviderGlyph.menuBarSize) {
+                Image(nsImage: glyph)
+            } else {
+                Image(systemName: "gauge.with.needle")
+            }
+            Text(CollapsedLabelText.text(for: store.slots[kind]))
         }
-        .accessibilityLabel("\(source.displayName) usage")
+        .accessibilityLabel("\(kind.displayName) usage")
     }
 }

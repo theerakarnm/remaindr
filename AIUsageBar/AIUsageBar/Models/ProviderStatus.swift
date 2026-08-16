@@ -17,16 +17,18 @@ enum ProviderKind: String, CaseIterable, Sendable, Identifiable {
         }
     }
 
-    /// Short form used inside the 14-character collapsed menu bar label.
-    var shortName: String {
+    /// Asset catalog name of the monochrome template glyph. The collapsed label uses it
+    /// instead of a text prefix, so the bar is identifiable without reading it.
+    var iconAssetName: String {
         switch self {
-        case .claude: return "CL"
-        case .zai: return "GLM"
-        case .deepseek: return "DS"
+        case .claude: return "ProviderIconClaude"
+        case .zai: return "ProviderIconZAI"
+        case .deepseek: return "ProviderIconDeepSeek"
         }
     }
 
-    /// Keychain account name. Claude has no entry: it reads local session files.
+    /// Keychain account name. Claude only reads this when the billed header probe is on;
+    /// its primary source is the local session files.
     var keychainAccount: String? {
         switch self {
         case .claude: return "anthropic"
@@ -67,6 +69,16 @@ enum ProviderReading: Equatable, Sendable {
     case balance(amount: Decimal, currency: String)
 }
 
+/// A weekly-window meter, present only when the provider actually reports one. z.ai
+/// answers with a weekly quota entry; Claude's local session files carry no weekly
+/// ceiling to divide by, and DeepSeek meters credit, so those two leave it nil rather
+/// than invent a number.
+struct ProviderWeeklyUsage: Equatable, Sendable {
+    /// 0...1 of the weekly allowance spent, same convention as `ProviderReading.fraction`.
+    let used: Double
+    let resetsAt: Date?
+}
+
 /// One successful reading from one provider at one moment.
 struct ProviderStatus: Equatable, Sendable {
     let kind: ProviderKind
@@ -74,38 +86,20 @@ struct ProviderStatus: Equatable, Sendable {
     /// Secondary line in the dropdown: a reset time, a plan name, or a currency note.
     let detail: String
     let fetchedAt: Date
-}
+    /// The weekly meter, when the provider reports one. The dropdown draws it stacked
+    /// behind the primary reading.
+    var weekly: ProviderWeeklyUsage?
 
-/// What the collapsed menu bar label reports. `allConfigured` is the default because the
-/// brief's example label shows more than one provider at once.
-enum LabelSource: Equatable, Sendable, Hashable {
-    case allConfigured
-    case provider(ProviderKind)
-
-    var storageValue: String {
-        switch self {
-        case .allConfigured: return "all"
-        case .provider(let kind): return kind.rawValue
-        }
-    }
-
-    /// Any unrecognised stored string falls back to `allConfigured`.
-    init(storageValue: String) {
-        if let kind = ProviderKind(rawValue: storageValue) {
-            self = .provider(kind)
-        } else {
-            self = .allConfigured
-        }
-    }
-
-    var displayName: String {
-        switch self {
-        case .allConfigured: return "All configured"
-        case .provider(let kind): return kind.displayName
-        }
-    }
-
-    static var allCases: [LabelSource] {
-        [.allConfigured] + ProviderKind.allCases.map { .provider($0) }
+    /// `weekly` defaults to nil so providers with no weekly meter read unchanged.
+    init(kind: ProviderKind,
+         reading: ProviderReading,
+         detail: String,
+         fetchedAt: Date,
+         weekly: ProviderWeeklyUsage? = nil) {
+        self.kind = kind
+        self.reading = reading
+        self.detail = detail
+        self.fetchedAt = fetchedAt
+        self.weekly = weekly
     }
 }
