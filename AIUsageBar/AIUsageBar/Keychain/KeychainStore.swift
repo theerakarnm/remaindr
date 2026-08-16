@@ -64,4 +64,23 @@ struct KeychainStore: Sendable {
     func hasKey(for kind: ProviderKind) -> Bool {
         ((try? value(for: kind)) ?? nil) != nil
     }
+
+    /// Reads a generic-password item another app stored, such as Claude Code's OAuth
+    /// credential. Read-only: this app never writes or deletes a foreign item, and the
+    /// value never leaves memory except into a request header.
+    func foreignValue(service: String) throws -> String? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess, let data = result as? Data else {
+            throw KeychainError.unexpectedStatus(status)
+        }
+        return String(data: data, encoding: .utf8)
+    }
 }
