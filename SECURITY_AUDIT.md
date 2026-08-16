@@ -21,9 +21,9 @@ Findings are ranked by severity, then by exploitability.
 **Evidence:**
 
     // project.pbxproj, Release target configuration (AA00000000000000000000F0)
-    184| isa = XCBuildConfiguration;
-    185| buildSettings = {
-    185|     CODE_SIGN_STYLE = Automatic;      // no DEVELOPMENT_TEAM, no CODE_SIGN_IDENTITY
+    183| isa = XCBuildConfiguration;
+    184| buildSettings = {
+    185|     CODE_SIGN_STYLE = Automatic;      // no DEVELOPMENT_TEAM / CODE_SIGN_IDENTITY anywhere in the file
     188|     ENABLE_HARDENED_RUNTIME = YES;
 
     // build/.../Release/Remaindr.build/DerivedSources/Entitlements.plist
@@ -34,7 +34,7 @@ Findings are ranked by severity, then by exploitability.
     //   CodeDirectory flags=0x10002(adhoc,runtime)  Signature=adhoc  TeamIdentifier=not set
     //   [Key] com.apple.security.get-task-allow  [Value] true
 
-**Attack path:** A malicious local app running as the same user (threat 1) ad-hoc signs itself with the `get-task-allow` entitlement, which requires no Apple approval. Remaindr runs permanently in the menu bar and, on every 1-60 minute refresh, loads the z.ai and DeepSeek API keys from its Keychain and the Claude Code OAuth access token (read from the `Claude Code-credentials` keychain item) into memory to build `Authorization` headers (`ClaudeAccountUsage.swift:51`, `ZAIProvider.swift:48`, `DeepSeekProvider.swift:39`). Because the shipped Remaindr binary itself carries `get-task-allow` while SIP is otherwise on, the malware can call `task_for_pid` on the running Remaindr process, attach a debugger, and dump its memory to recover the raw keys and `Bearer` token strings. No Keychain ACL prompt appears and the user sees nothing. Impact: silent theft of every configured provider credential, including the Claude Code OAuth token, which grants account-level access.
+**Attack path:** A malicious local app already running as the same user (threat 1) needs no extra approval. Remaindr runs permanently in the menu bar and, on every 1-60 minute refresh, loads the z.ai and DeepSeek API keys from its Keychain and the Claude Code OAuth access token (read from the `Claude Code-credentials` keychain item) into memory to build `Authorization` headers (`ClaudeAccountUsage.swift:51`, `ZAIProvider.swift:48`, `DeepSeekProvider.swift:39`). The shipped binary carries `get-task-allow` in Release, whose documented purpose is to make a process attachable by a debugger, so the attacker can attach to the running process through the standard debugging path this entitlement enables and dump memory to recover the raw key strings and the `Bearer` token. No Keychain ACL prompt appears and nothing is visible to the user; the Claude Code OAuth token in particular grants account-level access. (The adjacent DYLD-injection path stays closed: no `allow-dyld-environment-variables` entitlement is present.) Rated High for a distributed build; for a strictly self-compiled local build the practical exposure drops toward Medium.
 
 **Why it is wrong:** `get-task-allow` in a release/distributed build disables the debugger-attachment protection that hardened runtime is meant to provide; it is normally a Debug-only convenience. The root cause is that `CODE_SIGN_STYLE = Automatic` with no team or identity makes Xcode fall back to ad-hoc signing, which adds `get-task-allow` and produces a new, untrusted signature on every rebuild.
 
@@ -75,9 +75,14 @@ Findings are ranked by severity, then by exploitability.
     // README.md:70
     70| > Not notarized/signed yet during early development ... Right-click -> Open to bypass, or build from source.
 
+    // Verified on the artifacts present in the repo (build/Remaindr-1.0.dmg and its
+    // build/dmg-staging/Remaindr.app source copy):
+    //   codesign -dv -> Signature=adhoc, TeamIdentifier=not set
+    //   spctl -a -vv -> rejected (no Developer ID, not notarized)
+
 **Attack path:** The distributed artifact has no Developer ID signature and no notarization ticket. A network attacker (threat 2) who can interfere with the download path (untrusted mirror, hostile proxy for an http fetch of the DMG, substituted GitHub release asset) or a disk/backup attacker (threat 4) who replaces the `.dmg` delivers a trojaned build. Users have been instructed to dismiss Gatekeeper warnings with right-click, Open, so the modified app installs and runs; it then holds the same keychain-reading capabilities as the real app plus arbitrary attacker code. There is also no update channel (see category 11), so every version bump repeats this exposure.
 
-**Why it is wrong:** Notarization plus a stable Developer ID signature is the only client-side mechanism that lets macOS detect a tampered or substituted app before first run. Documenting the Gatekeeper bypass institutionalizes the weakness.
+**Why it is wrong:** Notarization plus a stable Developer ID signature is the only client-side mechanism that lets macOS detect a tampered or substituted app before first run. Documenting the Gatekeeper bypass institutionalizes the weakness: `spctl` currently rejects the artifact outright, so first launch only succeeds via that bypass.
 
 **Remediation:** Sign, notarize, and staple in `make-dmg.sh` after step 4:
 
@@ -218,11 +223,11 @@ Findings are ranked by severity, then by exploitability.
 
 **Evidence:**
 
-    184| isa = XCBuildConfiguration;
-    185| buildSettings = {
-    186|     CODE_SIGN_STYLE = Automatic;
+    183| isa = XCBuildConfiguration;
+    184| buildSettings = {
+    185|     CODE_SIGN_STYLE = Automatic;
     ...
-    (no ENABLE_APP_SANDBOX, no CODE_SIGN_ENTITLEMENTS, no sandbox entitlements keys anywhere in the file)
+    (no ENABLE_APP_SANDBOX, no CODE_SIGN_ENTITLEMENTS, no CODE_SIGN_IDENTITY, no DEVELOPMENT_TEAM anywhere in the file)
 
 **Attack path:** The app runs unsandboxed with full user-level file access. This is a deliberate design dependency, not an oversight: the Claude provider reads `~/.claude/projects/**/*.jsonl` (`ClaudeProvider.swift:22-26`) and reads the `Claude Code-credentials` Keychain item (`ClaudeAccountUsage.swift:20`), both of which are outside what a sandboxed app can reach without user grants. The practical risk is blast-radius: any future code-execution bug in the app executes with the user's full permissions. Recorded as Informational because the capability is required by the product's documented behavior, and the hardened runtime is enabled.
 
