@@ -11,7 +11,9 @@ import Foundation
 ///
 /// `unit` encodes the window: 3 = hours, 4 = days, 5 = months, 6 = weeks, multiplied by
 /// `number`. A sub-daily window is the rolling 5-hour session meter, which is the one
-/// this app shows. `TOKENS_LIMIT` is the older name for `CREDIT_LIMIT`; both are accepted.
+/// this app shows as the primary reading; the weekly entry (unit 6) is surfaced as the
+/// status's `weekly` meter for the dropdown's stacked bar. `TOKENS_LIMIT` is the older
+/// name for `CREDIT_LIMIT`; both are accepted.
 struct ZAIProvider: UsageProvider {
     let kind: ProviderKind = .zai
 
@@ -99,18 +101,26 @@ struct ZAIProvider: UsageProvider {
         }
 
         // The rolling session meter is the percentage entry with a sub-daily window.
-        let session = limits.first { entry in
-            let type = (entry["type"] as? String) ?? ""
-            guard type == "CREDIT_LIMIT" || type == "TOKENS_LIMIT" else { return false }
-            guard let windowMs = windowMilliseconds(entry) else { return false }
-            return windowMs < 24 * 60 * 60 * 1000
-        }
-        guard let session, let percentage = session["percentage"] as? Double ?? (session["percentage"] as? Int).map(Double.init) else {
-            throw ProviderError.malformedResponse("no session percentage")
+        // The weekly entry runs from 7 days up to (excluding) the monthly window, so a
+        // monthly meter cannot be mistaken for one. A payload without a weekly entry
+        // simply leaves `weekly` nil; it is never fatal.
+        func quotaEntry(windowMatches: (Double) -> Bool) -> [String: Any]? {
+            limits.first { entry in
+                guard let type = entry["type"] as? String,
+                      type == "CREDIT_LIMIT" || type == "TOKENS_LIMIT" else { return false }
+                guard let windowMs = windowMilliseconds(entry) else { return false }
+                return windowMatches(windowMs)
+            }
         }
 
-        let resetsAt = (session["nextResetTime"] as? Double ?? (session["nextResetTime"] as? Int).map(Double.init))
-            .map { Date(timeIntervalSince1970: $0 / 1000) }
+        guard let session = quotaEntry(windowMatches: { $0 < 24 * 60 * 60 * 1000 }),
+              let (sessionUsed, sessionResetsAt) = meter(session) else {
+            throw ProviderError.malformedResponse("no session percentage")
+        }
+        let weekly = quotaEntry(windowMatches: { $0 >= 7 * 24 * 60 * 60 * 1000 && $0 < 30 * 24 * 60 * 60 * 1000 })
+            .flatMap(meter)
+            .map { ProviderWeeklyUsage(used: $0.0, resetsAt: $0.1) }
+
         let plan = (container["level"] as? String)?.capitalized
 
         var detail = "5-hour window"
@@ -118,10 +128,23 @@ struct ZAIProvider: UsageProvider {
 
         return ProviderStatus(
             kind: .zai,
-            reading: .fraction(used: min(max(percentage / 100, 0), 1), resetsAt: resetsAt),
+            reading: .fraction(used: sessionUsed, resetsAt: sessionResetsAt),
             detail: detail,
-            fetchedAt: now
+            fetchedAt: now,
+            weekly: weekly
         )
+    }
+
+    /// `(used, resetsAt)` of one limits entry, with `percentage` clamped to 0...1.
+    /// Returns nil when the entry carries no percentage, which keeps the caller's
+    /// "no session percentage" path intact.
+    private static func meter(_ entry: [String: Any]) -> (Double, Date?)? {
+        guard let percentage = entry["percentage"] as? Double ?? (entry["percentage"] as? Int).map(Double.init) else {
+            return nil
+        }
+        let resetsAt = (entry["nextResetTime"] as? Double ?? (entry["nextResetTime"] as? Int).map(Double.init))
+            .map { Date(timeIntervalSince1970: $0 / 1000) }
+        return (min(max(percentage / 100, 0), 1), resetsAt)
     }
 
     /// `(unit, number)` to a window length in milliseconds. Unknown units return nil so a
