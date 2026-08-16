@@ -1583,7 +1583,7 @@ The "one provider failing must not blank the others" rule lives in `ProviderStor
 
 **Steps:**
 
-- [ ] Step 1: Create `AIUsageBar/AIUsageBar/Models/Preferences.swift`.
+- [x] Step 1: Create `AIUsageBar/AIUsageBar/Models/Preferences.swift`.
 
       ```swift
       import Foundation
@@ -1633,7 +1633,7 @@ The "one provider failing must not blank the others" rule lives in `ProviderStor
       }
       ```
 
-- [ ] Step 2: Create `AIUsageBar/AIUsageBar/UI/ProviderStore.swift`.
+- [x] Step 2: Create `AIUsageBar/AIUsageBar/UI/ProviderStore.swift`.
 
       ```swift
       import Foundation
@@ -1727,7 +1727,7 @@ The "one provider failing must not blank the others" rule lives in `ProviderStor
       }
       ```
 
-- [ ] Step 3: Create `AIUsageBar/AIUsageBar/Refresh/RefreshScheduler.swift`.
+- [x] Step 3: Create `AIUsageBar/AIUsageBar/Refresh/RefreshScheduler.swift`.
 
       ```swift
       import Foundation
@@ -1769,7 +1769,7 @@ The "one provider failing must not blank the others" rule lives in `ProviderStor
       }
       ```
 
-- [ ] Step 4: Verify - Run:
+- [x] Step 4: Verify - Run:
 
       ```bash
       mkdir -p /tmp/aiub-verify && cat > /tmp/aiub-verify/main.swift <<'EOF'
@@ -1814,8 +1814,10 @@ The "one provider failing must not blank the others" rule lives in `ProviderStor
       UNCONFIGURED=Not configured STILL_NIL=true
       ```
 
-- [ ] Step 5: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
-- [ ] Step 6: Commit - `git add AIUsageBar/AIUsageBar/Models/Preferences.swift AIUsageBar/AIUsageBar/UI/ProviderStore.swift AIUsageBar/AIUsageBar/Refresh/RefreshScheduler.swift && git commit -m "feat: add preferences, per-provider store, and refresh scheduler"`
+      > Deviation: dropped `AIUsageBar/AIUsageBar/Models/CollapsedLabelText.swift` from the compile list. That file is Task 9's, does not exist yet, and the harness above never references `CollapsedLabelText`, so this is a redundant reference in the plan's own command rather than a real dependency.
+
+- [x] Step 5: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
+- [x] Step 6: Commit - `git add AIUsageBar/AIUsageBar/Models/Preferences.swift AIUsageBar/AIUsageBar/UI/ProviderStore.swift AIUsageBar/AIUsageBar/Refresh/RefreshScheduler.swift && git commit -m "feat: add preferences, per-provider store, and refresh scheduler"`
 
 ---
 
