@@ -2118,7 +2118,7 @@ The key fields must be `SecureField` and must never be seeded from the Keychain;
 
 **Steps:**
 
-- [ ] Step 1: Create `AIUsageBar/AIUsageBar/App/LoginItem.swift`.
+- [x] Step 1: Create `AIUsageBar/AIUsageBar/App/LoginItem.swift`.
 
       ```swift
       import Foundation
@@ -2142,7 +2142,7 @@ The key fields must be `SecureField` and must never be seeded from the Keychain;
       }
       ```
 
-- [ ] Step 2: Create `AIUsageBar/AIUsageBar/UI/SettingsView.swift`.
+- [x] Step 2: Create `AIUsageBar/AIUsageBar/UI/SettingsView.swift`.
 
       ```swift
       import SwiftUI
@@ -2266,7 +2266,7 @@ The key fields must be `SecureField` and must never be seeded from the Keychain;
       }
       ```
 
-- [ ] Step 3: Replace the whole body of `AIUsageBar/AIUsageBar/App/AIUsageBarApp.swift` (anchor: `struct AIUsageBarApp: App`).
+- [x] Step 3: Replace the whole body of `AIUsageBar/AIUsageBar/App/AIUsageBarApp.swift` (anchor: `struct AIUsageBarApp: App`).
 
       ```swift
       import SwiftUI
@@ -2302,11 +2302,11 @@ The key fields must be `SecureField` and must never be seeded from the Keychain;
       }
       ```
 
-- [ ] Step 4: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
-- [ ] Step 5: Verify - Manual: `open AIUsageBar/.build/Build/Products/Debug/AIUsageBar.app && sleep 3 && osascript -e 'tell application "System Events" to return (name of every process whose bundle identifier is "com.theerakarn.AIUsageBar")' && osascript -e 'tell application "System Events" to return (background only of every process whose bundle identifier is "com.theerakarn.AIUsageBar")'` - Expected: the first call prints `AIUsageBar`, proving it launched; the second prints `true`, proving it is an agent process with no Dock icon.
-- [ ] Step 6: Verify - Manual: `defaults read com.theerakarn.AIUsageBar` - Expected: at most the three non-secret keys `refreshIntervalMinutes`, `labelSource`, `allowBilledClaudeProbe`, and no value resembling an API key. A `Domain ... does not exist` message before any setting is changed is also a pass.
-- [ ] Step 7: Verify - Manual: `osascript -e 'tell application "AIUsageBar" to quit' 2>/dev/null; pkill -x AIUsageBar; sleep 1; pgrep -x AIUsageBar || echo "stopped"` - Expected: `stopped`.
-- [ ] Step 8: Commit - `git add AIUsageBar/AIUsageBar/UI/SettingsView.swift AIUsageBar/AIUsageBar/App/LoginItem.swift AIUsageBar/AIUsageBar/App/AIUsageBarApp.swift && git commit -m "feat: add settings window, launch at login, and app wiring"`
+- [x] Step 4: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
+- [x] Step 5: Verify - Manual: `open AIUsageBar/.build/Build/Products/Debug/AIUsageBar.app && sleep 3 && osascript -e 'tell application "System Events" to return (name of every process whose bundle identifier is "com.theerakarn.AIUsageBar")' && osascript -e 'tell application "System Events" to return (background only of every process whose bundle identifier is "com.theerakarn.AIUsageBar")'` - Expected: the first call prints `AIUsageBar`, proving it launched; the second prints `true`, proving it is an agent process with no Dock icon.
+- [x] Step 6: Verify - Manual: `defaults read com.theerakarn.AIUsageBar` - Expected: at most the three non-secret keys `refreshIntervalMinutes`, `labelSource`, `allowBilledClaudeProbe`, and no value resembling an API key. A `Domain ... does not exist` message before any setting is changed is also a pass.
+- [x] Step 7: Verify - Manual: `osascript -e 'tell application "AIUsageBar" to quit' 2>/dev/null; pkill -x AIUsageBar; sleep 1; pgrep -x AIUsageBar || echo "stopped"` - Expected: `stopped`.
+- [x] Step 8: Commit - `git add AIUsageBar/AIUsageBar/UI/SettingsView.swift AIUsageBar/AIUsageBar/App/LoginItem.swift AIUsageBar/AIUsageBar/App/AIUsageBarApp.swift && git commit -m "feat: add settings window, launch at login, and app wiring"`
 
 ---
 
