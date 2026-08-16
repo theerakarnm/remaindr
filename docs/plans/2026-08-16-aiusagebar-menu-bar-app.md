@@ -1157,7 +1157,7 @@ Use `Date.ISO8601FormatStyle`, which is a `Sendable` struct.
 
 **Steps:**
 
-- [ ] Step 1: Create `AIUsageBar/AIUsageBar/Providers/ClaudeSessionBlocks.swift`.
+- [x] Step 1: Create `AIUsageBar/AIUsageBar/Providers/ClaudeSessionBlocks.swift`.
 
       ```swift
       import Foundation
@@ -1280,7 +1280,7 @@ Use `Date.ISO8601FormatStyle`, which is a `Sendable` struct.
       }
       ```
 
-- [ ] Step 2: Verify - Run:
+- [x] Step 2: Verify - Run:
 
       ```bash
       mkdir -p /tmp/aiub-verify && cat > /tmp/aiub-verify/fixture.jsonl <<'EOF'
@@ -1318,8 +1318,8 @@ Use `Date.ISO8601FormatStyle`, which is a `Sendable` struct.
       ACTIVE tokens=932 peak=1865 percent=50 resetsAt=2026-01-15T21:00:00Z
       ```
 
-- [ ] Step 3: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
-- [ ] Step 4: Commit - `git add AIUsageBar/AIUsageBar/Providers/ClaudeSessionBlocks.swift && git commit -m "feat: add Claude rolling 5-hour block aggregation"`
+- [x] Step 3: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
+- [x] Step 4: Commit - `git add AIUsageBar/AIUsageBar/Providers/ClaudeSessionBlocks.swift && git commit -m "feat: add Claude rolling 5-hour block aggregation"`
 
 ---
 
