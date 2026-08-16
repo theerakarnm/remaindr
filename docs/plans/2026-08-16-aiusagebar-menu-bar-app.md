@@ -491,7 +491,7 @@ The UI branches on the case; it never converts a balance into a fraction.
 
 **Steps:**
 
-- [ ] Step 1: Create `AIUsageBar/AIUsageBar/Models/ProviderStatus.swift`.
+- [x] Step 1: Create `AIUsageBar/AIUsageBar/Models/ProviderStatus.swift`.
 
       ```swift
       import Foundation
@@ -607,7 +607,7 @@ The UI branches on the case; it never converts a balance into a fraction.
       }
       ```
 
-- [ ] Step 2: Create `AIUsageBar/AIUsageBar/Providers/UsageProvider.swift`.
+- [x] Step 2: Create `AIUsageBar/AIUsageBar/Providers/UsageProvider.swift`.
 
       ```swift
       import Foundation
@@ -639,7 +639,7 @@ The UI branches on the case; it never converts a balance into a fraction.
       }
       ```
 
-- [ ] Step 3: Verify - Run:
+- [x] Step 3: Verify - Run:
 
       ```bash
       mkdir -p /tmp/aiub-verify && cat > /tmp/aiub-verify/main.swift <<'EOF'
@@ -657,8 +657,8 @@ The UI branches on the case; it never converts a balance into a fraction.
       kinds=3 short=CL err=Rate limited reading=balance(amount: 4.1, currency: "USD")
       sources=all,claude,zai,deepseek default=all
       ```
-- [ ] Step 4: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
-- [ ] Step 5: Commit - `git add AIUsageBar/AIUsageBar/Models/ProviderStatus.swift AIUsageBar/AIUsageBar/Providers/UsageProvider.swift && git commit -m "feat: add ProviderStatus model and UsageProvider protocol"`
+- [x] Step 4: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
+- [x] Step 5: Commit - `git add AIUsageBar/AIUsageBar/Models/ProviderStatus.swift AIUsageBar/AIUsageBar/Providers/UsageProvider.swift && git commit -m "feat: add ProviderStatus model and UsageProvider protocol"`
 
 ---
 
