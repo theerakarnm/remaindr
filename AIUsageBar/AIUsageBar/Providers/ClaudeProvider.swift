@@ -1,13 +1,15 @@
 import Foundation
 
-/// Claude has no public "remaining subscription limit" endpoint, so this provider has two
-/// sources, in order:
-///  1. local session files under `~/.claude/projects/**/*.jsonl`, aggregated into rolling
-///     5-hour blocks;
-///  2. `anthropic-ratelimit-*` response headers, but only when the user has explicitly
+/// Claude has three sources, in order:
+///  1. the account usage endpoint (`/api/oauth/usage`), which reports the exact
+///     percentages Claude Code itself shows in `/usage`, authenticated with the OAuth
+///     credential Claude Code already stores in the login Keychain;
+///  2. local session files under `~/.claude/projects/**/*.jsonl`, aggregated into rolling
+///     5-hour blocks, used whenever the account source is unavailable;
+///  3. `anthropic-ratelimit-*` response headers, but only when the user has explicitly
 ///     opted into a billed probe request, because the headers exist only on a successful
 ///     Messages API call.
-/// When neither is available it throws `.notConfigured`. It never invents a number.
+/// When none is available it throws `.notConfigured`. It never invents a number.
 struct ClaudeProvider: UsageProvider {
     let kind: ProviderKind = .claude
 
@@ -34,6 +36,13 @@ struct ClaudeProvider: UsageProvider {
     }
 
     func fetch(now: Date) async throws -> ProviderStatus {
+        // The account endpoint is the only source that knows the real plan limits, so it
+        // goes first. Every way it can fail (no signed-in credential, offline, expired
+        // token, server hiccup) means "fall through to the next source", not "error out".
+        if let status = try? await accountUsageStatus(now: now) {
+            return status
+        }
+
         let directory = projectsDirectory
         // The scan touches ~1600 files, so keep it off the main actor.
         let blocks = await Task.detached(priority: .utility) {
@@ -48,6 +57,33 @@ struct ClaudeProvider: UsageProvider {
             throw ProviderError.notConfigured
         }
         return try await probeHeaders(key: key, now: now)
+    }
+
+    /// Turns the account usage payload into the status the UI draws. The 5-hour percent
+    /// drives the primary meter and reset countdown; the weekly limit, when the account
+    /// reports one, rides along as the stacked back layer.
+    private func accountUsageStatus(now: Date) async throws -> ProviderStatus {
+        let usage = try await ClaudeAccountUsage.fetch(keychain: keychain, session: session)
+        return ProviderStatus(
+            kind: .claude,
+            reading: .fraction(used: usage.fiveHourUsedFraction, resetsAt: usage.fiveHourResetsAt),
+            detail: "Plan limits reported by claude.ai (same source as Claude Code /usage)",
+            fetchedAt: now,
+            weekly: usage.weekly
+        )
+    }
+
+    /// Shared shape of a transport failure so the account client and the probe map the
+    /// same `URLError`s onto `.offline`.
+    static func transportFailure(_ error: URLError) -> ProviderError {
+        switch error.code {
+        case .notConnectedToInternet, .networkConnectionLost, .cannotFindHost,
+             .cannotConnectToHost, .dnsLookupFailed, .timedOut, .internationalRoamingOff,
+             .dataNotAllowed, .secureConnectionFailed:
+            return .offline
+        default:
+            return .serverError(status: 0)
+        }
     }
 
     // MARK: - Local session files
