@@ -803,7 +803,7 @@ The 401 body is **plain text** (`Authentication Fails (governor)`), not JSON, so
 
 **Steps:**
 
-- [ ] Step 1: Create `AIUsageBar/AIUsageBar/Providers/DeepSeekProvider.swift`.
+- [x] Step 1: Create `AIUsageBar/AIUsageBar/Providers/DeepSeekProvider.swift`.
 
       ```swift
       import Foundation
@@ -898,7 +898,7 @@ The 401 body is **plain text** (`Authentication Fails (governor)`), not JSON, so
       }
       ```
 
-- [ ] Step 2: Verify - Run:
+- [x] Step 2: Verify - Run:
 
       ```bash
       mkdir -p /tmp/aiub-verify && cat > /tmp/aiub-verify/main.swift <<'EOF'
@@ -924,10 +924,11 @@ The 401 body is **plain text** (`Authentication Fails (governor)`), not JSON, so
       nonnumeric=Bad response
       ```
 
-- [ ] Step 3: Verify - Manual: `curl -s -m 15 -o /dev/null -w '%{http_code}\n' https://api.deepseek.com/user/balance` - Expected: `401`, confirming the endpoint is live and that the unauthorized branch is reachable. This call carries no key and consumes no credits.
-- [ ] Step 4: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
-- [ ] Step 5: 👤 Verify - Human: with a real DeepSeek key in Settings, click Refresh and read the DeepSeek row - Expected: the row shows the same figure as the DeepSeek console's balance page, in the same currency - Proxy: Step 2 asserts the exact `total_balance` to `Decimal` mapping off a fixture with the documented shape, and Step 3 proves the live endpoint and its 401 branch. **This is the only reason a real key is needed; `/user/balance` is not billed, but it does require the user's own credential, which no agent may supply.**
-- [ ] Step 6: Commit - `git add AIUsageBar/AIUsageBar/Providers/DeepSeekProvider.swift && git commit -m "feat: add DeepSeek balance provider"`
+- [x] Step 3: Verify - Manual: `curl -s -m 15 -o /dev/null -w '%{http_code}\n' https://api.deepseek.com/user/balance` - Expected: `401`, confirming the endpoint is live and that the unauthorized branch is reachable. This call carries no key and consumes no credits.
+- [x] Step 4: Verify - Run: `cd AIUsageBar && xcodebuild -scheme AIUsageBar -configuration Debug -derivedDataPath ./.build build 2>&1 | tee /tmp/aiub-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/aiub-build.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
+- [ ] 👤 Step 5: Verify - Human: with a real DeepSeek key in Settings, click Refresh and read the DeepSeek row - Expected: the row shows the same figure as the DeepSeek console's balance page, in the same currency - Proxy: Step 2 asserts the exact `total_balance` to `Decimal` mapping off a fixture with the documented shape, and Step 3 proves the live endpoint and its 401 branch. **This is the only reason a real key is needed; `/user/balance` is not billed, but it does require the user's own credential, which no agent may supply.**
+      > Awaiting human: no DeepSeek API key was supplied during this run. Paste one into Settings > API keys > DeepSeek, click Refresh, and compare the row's figure to the DeepSeek console's balance page.
+- [x] Step 6: Commit - `git add AIUsageBar/AIUsageBar/Providers/DeepSeekProvider.swift && git commit -m "feat: add DeepSeek balance provider"`
 
 ---
 
