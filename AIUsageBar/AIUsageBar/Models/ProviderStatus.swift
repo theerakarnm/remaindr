@@ -28,7 +28,8 @@ enum ProviderKind: String, CaseIterable, Sendable, Identifiable {
     }
 
     /// Keychain account name. Claude only reads this when the billed header probe is on;
-    /// its primary source is the local session files.
+    /// its primary source is the account usage endpoint, authenticated with the OAuth
+    /// credential Claude Code itself stores.
     var keychainAccount: String? {
         switch self {
         case .claude: return "anthropic"
