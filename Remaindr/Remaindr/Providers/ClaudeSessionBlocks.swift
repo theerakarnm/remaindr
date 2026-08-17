@@ -76,7 +76,14 @@ enum ClaudeSessionBlocks {
             if let blockStart = start, let last = previous,
                entry.timestamp.timeIntervalSince(blockStart) < blockDuration,
                entry.timestamp.timeIntervalSince(last) < blockDuration {
-                total += entry.totalTokens
+                let (sum, overflow) = total.addingReportingOverflow(entry.totalTokens)
+                guard !overflow else {
+                    // A total that cannot grow means the entries so far are corrupt
+                    // or hostile; keep the block, skip the entry, never trap.
+                    previous = entry.timestamp
+                    continue
+                }
+                total = sum
                 previous = entry.timestamp
                 continue
             }

@@ -19,6 +19,10 @@ struct ClaudeProvider: UsageProvider {
     /// Off unless the user turns it on in Settings. A probe request is billed.
     private let allowBilledProbe: Bool
 
+    /// Session files larger than this are skipped: the scan reads whole files
+    /// into memory, and a planted huge file must not be able to jetsam the app.
+    static let maxSessionFileBytes = 16 * 1024 * 1024
+
     static var defaultProjectsDirectory: URL {
         FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude", isDirectory: true)
@@ -85,12 +89,14 @@ struct ClaudeProvider: UsageProvider {
     static func scanBlocks(in directory: URL) -> [ClaudeUsageBlock] {
         guard let walker = FileManager.default.enumerator(
             at: directory,
-            includingPropertiesForKeys: [.isRegularFileKey],
+            includingPropertiesForKeys: [.isRegularFileKey, .fileSizeKey],
             options: [.skipsHiddenFiles]
         ) else { return [] }
 
         var entries: [ClaudeUsageEntry] = []
         for case let url as URL in walker where url.pathExtension == "jsonl" {
+            let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            guard size <= Self.maxSessionFileBytes else { continue }
             guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
             for line in text.split(separator: "\n", omittingEmptySubsequences: true) {
                 if let entry = ClaudeSessionBlocks.entry(fromLine: String(line)) {
