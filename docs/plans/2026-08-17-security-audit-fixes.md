@@ -169,7 +169,7 @@ Fixes the shipping half of F-01, all of F-02, and all of F-04.
 **Gotcha:** verified during planning - with no signing identity, Xcode stamps `com.apple.security.get-task-allow` into Release builds even when `CODE_SIGN_ENTITLEMENTS` is set, and only a re-sign removes it:
 `codesign --force --sign - --options runtime --entitlements Remaindr/Remaindr/Remaindr.entitlements <app>` leaves `Signature=adhoc`, `flags=0x10002(adhoc,runtime)`, empty entitlements, and passes `codesign --verify --strict`.
 
-- [ ] Step 1: In `make-dmg.sh`, insert this block after the `DMG="build/$APP_NAME-$VERSION.dmg"` line (line 28 at base) and before the `# 2. Stage a clean folder` comment:
+- [x] Step 1: In `make-dmg.sh`, insert this block after the `DMG="build/$APP_NAME-$VERSION.dmg"` line (line 28 at base) and before the `# 2. Stage a clean folder` comment:
 
       ```bash
       # 1b. Re-sign with the app's real entitlements.
@@ -196,7 +196,7 @@ Fixes the shipping half of F-01, all of F-02, and all of F-04.
       fi
       ```
 
-- [ ] Step 2: In `make-dmg.sh`, replace the fixed `/tmp/dmg-applescript.txt` path with a private temp directory. Directly after the `CONFIG="Release"` / `DERIVED=` / `DIST=` assignments (line 17 at base), add:
+- [x] Step 2: In `make-dmg.sh`, replace the fixed `/tmp/dmg-applescript.txt` path with a private temp directory. Directly after the `CONFIG="Release"` / `DERIVED=` / `DIST=` assignments (line 17 at base), add:
 
       ```bash
       LAYOUT_DIR=$(mktemp -d "${TMPDIR:-/tmp}/remaindr-dmg.XXXXXX")
@@ -215,7 +215,7 @@ Fixes the shipping half of F-01, all of F-02, and all of F-04.
 
       The standalone `rm -f /tmp/dmg-applescript.txt` line is deleted; the `trap` owns cleanup.
 
-- [ ] Step 3: In `make-dmg.sh`, after the `hdiutil create` block (line 69 at base) and before the step 5 comment, insert:
+- [x] Step 3: In `make-dmg.sh`, after the `hdiutil create` block (line 69 at base) and before the step 5 comment, insert:
 
       ```bash
       # 4b. Notarize and staple when both a Developer ID identity and a stored
@@ -227,7 +227,7 @@ Fixes the shipping half of F-01, all of F-02, and all of F-04.
       fi
       ```
 
-- [ ] Step 4: Replace the single README line 70:
+- [x] Step 4: Replace the single README line 70:
 
       ```
       > Not notarized/signed yet during early development — macOS Gatekeeper may warn on first launch. Right-click → Open to bypass, or build from source.
@@ -241,7 +241,7 @@ Fixes the shipping half of F-01, all of F-02, and all of F-04.
       > If you use a downloaded build, verify its SHA-256 against the checksum published with the release before opening it.
       ```
 
-- [ ] Step 5: Verify - Run:
+- [x] Step 5: Verify - Run:
 
       ```bash
       cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr
@@ -254,7 +254,7 @@ Fixes the shipping half of F-01, all of F-02, and all of F-04.
       Expected: `SYNTAX_OK`, then `0`, then `1`, then `2`.
       > Deviation: Expected `2` for the last count was a plan miscount; the file correctly contains 3 occurrences (explanatory comment, the `grep -q` assertion, and the error message). All three verified by reading the file.
 
-- [ ] Step 6: Verify - Run (the script's re-sign and assertion steps, executed directly against the Task 1 build):
+- [x] Step 6: Verify - Run (the script's re-sign and assertion steps, executed directly against the Task 1 build):
 
       ```bash
       cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr
@@ -268,7 +268,7 @@ Fixes the shipping half of F-01, all of F-02, and all of F-04.
 
       Expected: re-sign reports `replacing existing signature`; the entitlements dump prints only `[Dict]` with no keys; the grep prints `0`; `STRICT_OK`.
 
-- [ ] Step 7: Commit - `git add make-dmg.sh README.md docs/plans/2026-08-17-security-audit-fixes.md && git commit -m "fix(security): re-sign release without debug entitlement, gate notarization, stop teaching Gatekeeper bypass"`
+- [x] Step 7: Commit - `git add make-dmg.sh README.md docs/plans/2026-08-17-security-audit-fixes.md && git commit -m "fix(security): re-sign release without debug entitlement, gate notarization, stop teaching Gatekeeper bypass"`
 
 ---
 
