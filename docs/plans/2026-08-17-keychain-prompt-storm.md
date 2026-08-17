@@ -9,11 +9,11 @@
 >
 > **Read this first.** While this plan was being written, a second agent was executing
 > `docs/plans/2026-08-17-security-audit-fixes.md` against the same file this plan edits.
-> It rewrote `Remaindr/Remaindr/Keychain/KeychainStore.swift` three times, and at 09:38 it
-> deleted this plan file outright as a "stray plan file" (commit `a505d84`); the copy you
-> are reading was restored from `1a86754`. Do not start until that plan is finished or
-> stopped, confirm the Preflight md5 still matches, and work from the anchors rather than
-> the line numbers.
+> It rewrote `Remaindr/Remaindr/Keychain/KeychainStore.swift` three times, and twice deleted
+> this plan file outright as a "stray plan file" (commits `a505d84` and `a38c628`); the copy
+> you are reading was restored by hand. That run reported itself finished at `a38c628`.
+> Before starting, confirm it is no longer running, confirm the Preflight md5 still matches,
+> and work from the anchors rather than the line numbers.
 
 **Goal:** Stop Remaindr asking for the login keychain password five or six times per run, by never reading secret data when a presence check will do, reading each secret at most once per launch, and saving keys in place instead of destroying and recreating the item.
 
@@ -26,7 +26,7 @@ A process-wide `SecretCache` collapses the repeated data reads the five-minute r
 
 **Spec:** none - planned from conversation. The report is a screenshot of the macOS dialog "security wants to use your confidential information stored in "com.theerakarn.Remaindr.pdmn" in your keychain. To allow this, enter the "login" keychain password." plus the user's statement: "there is many of password prompt that make me annoying. I add password like 5-6 times after I have running this app."
 
-**Base commit:** `1a86754`, with `Remaindr/Remaindr/Keychain/KeychainStore.swift` at md5 `1b663660a4588856f8ca3959714d40b4`. Every line reference, anchor, and "already exists" claim below describes THIS tree. When an anchor does not match, run `git log --oneline 1a86754..HEAD` to tell "the plan was wrong" apart from "the file moved on".
+**Base commit:** `a38c628`, with `Remaindr/Remaindr/Keychain/KeychainStore.swift` at md5 `1b663660a4588856f8ca3959714d40b4`. Every line reference, anchor, and "already exists" claim below describes THIS tree. When an anchor does not match, run `git log --oneline a38c628..HEAD` to tell "the plan was wrong" apart from "the file moved on".
 
 **Confidence:** 9/10 - the mechanism and every Expected value below were measured on this machine and re-measured against the base commit above, not inferred. The single deduction is that `Remaindr/Remaindr/Keychain/KeychainStore.swift` was being edited by a concurrent execution of `docs/plans/2026-08-17-security-audit-fixes.md` throughout the writing of this plan (it moved three times between 09:19 and 09:37, the last change rewriting `upgradeAccessibility()`), and all three code tasks touch that one file. Work from the anchors, not the line numbers.
 
@@ -202,7 +202,7 @@ Establishing new convention: none. This plan reuses the `swiftc` harness precede
 
 ### PERISHABLE - recapture before task 1
 
-- **A concurrent agent was executing `docs/plans/2026-08-17-security-audit-fixes.md` against this same file, and deleted this plan file once (commit `a505d84`, restored from `1a86754`).** Check: `git log --format='%h %ad %s' --date=format:'%H:%M:%S' -5 && git status --porcelain && md5 -q Remaindr/Remaindr/Keychain/KeychainStore.swift` - the file was `1b663660a4588856f8ca3959714d40b4` at `1a86754`. Needed by: Tasks 1, 2, 3, which all edit that file. If the hash differs, re-read the file and re-anchor before editing; if the working tree is dirty or that plan still has unticked tasks touching `KeychainStore.swift`, STOP and ask rather than racing it.
+- **A concurrent agent was executing `docs/plans/2026-08-17-security-audit-fixes.md` against this same file, and deleted this plan file once (commit `a505d84`, restored from `1a86754`).** Check: `git log --format='%h %ad %s' --date=format:'%H:%M:%S' -5 && git status --porcelain && md5 -q Remaindr/Remaindr/Keychain/KeychainStore.swift` - the file was `1b663660a4588856f8ca3959714d40b4` at `a38c628`; the concurrent plan's own tick state was 37 of 38 steps done, last commit `a38c628` labelled "final". Needed by: Tasks 1, 2, 3, which all edit that file. If the hash differs, re-read the file and re-anchor before editing; if the working tree is dirty or that plan still has unticked tasks touching `KeychainStore.swift`, STOP and ask rather than racing it.
 - **Baseline build is green with zero warnings.** Check: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Debug -derivedDataPath /tmp/kc-dd build 2>&1 | tee /tmp/kc-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/kc-build.log || true)"` - recorded: `** BUILD SUCCEEDED **` and `warnings=0`, in about 13 seconds. Needed by: every task's Verify, which asserts the same two lines.
 - **No leftover verify items in the login keychain.** Check: `security find-generic-password -s com.theerakarn.Remaindr.verify >/dev/null 2>&1 && echo LEFTOVER || echo clean` - recorded: `clean`. Needed by: Tasks 1-3, whose harnesses seed and delete under that service. If it prints `LEFTOVER`, clear it with the Rollback command on Task 1 before starting.
 - **The user's real keys may or may not be stored.** Check: `for a in zai deepseek anthropic; do security find-generic-password -s com.theerakarn.Remaindr -a $a >/dev/null 2>&1 && echo "$a present" || echo "$a absent"; done` - recorded: `zai present`, `deepseek present`, `anthropic absent`. Needed by: the End-to-end verification only. No task Expected depends on it; the task harnesses use the throwaway `.verify` service precisely so they do not.
