@@ -284,7 +284,7 @@ Fixes F-03. The accessibility class moves to `kSecAttrAccessibleWhenUnlockedThis
 - `Remaindr/Remaindr/Keychain/KeychainStore.swift` ~11,~36,~61
 - `Remaindr/Remaindr/App/RemaindrApp.swift` ~10
 
-- [ ] Step 1: In `KeychainStore.swift`, add a static accessibility constant below the `service` property (line 11 at base):
+- [x] Step 1: In `KeychainStore.swift`, add a static accessibility constant below the `service` property (line 11 at base):
 
       ```swift
       /// The strictest class that still allows unattended refresh: the item never
@@ -294,7 +294,7 @@ Fixes F-03. The accessibility class moves to `kSecAttrAccessibleWhenUnlockedThis
 
       Then change line 36 from `attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock` to `attributes[kSecAttrAccessible as String] = Self.accessibility`.
 
-- [ ] Step 2: In `KeychainStore.swift`, add this method after `remove(_:)` (line 61 at base):
+- [x] Step 2: In `KeychainStore.swift`, add this method after `remove(_:)` (line 61 at base):
 
       ```swift
       /// Rewrites this app's own items so items written by an older build pick up
@@ -316,13 +316,13 @@ Fixes F-03. The accessibility class moves to `kSecAttrAccessibleWhenUnlockedThis
       }
       ```
 
-- [ ] Step 3: In `RemaindrApp.swift`, make `init()` upgrade once before the store is built. Insert as the first line of `init()` (line 10 at base):
+- [x] Step 3: In `RemaindrApp.swift`, make `init()` upgrade once before the store is built. Insert as the first line of `init()` (line 10 at base):
 
       ```swift
       KeychainStore().upgradeAccessibility()
       ```
 
-- [ ] Step 4: Verify - Run:
+- [x] Step 4: Verify - Run:
 
       ```bash
       mkdir -p /tmp/fix-kc && cat > /tmp/fix-kc/main.swift <<'EOF'
@@ -390,7 +390,7 @@ Fixes F-03. The accessibility class moves to `kSecAttrAccessibleWhenUnlockedThis
       CLEANED=true
       ```
 
-- [ ] Step 5: Verify - Run:
+- [x] Step 5: Verify - Run:
 
       ```bash
       cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr
@@ -400,10 +400,12 @@ Fixes F-03. The accessibility class moves to `kSecAttrAccessibleWhenUnlockedThis
 
       Expected: `** BUILD SUCCEEDED **`, then `0`.
 
-- [ ] Step 6: Commit - `git add Remaindr/Remaindr/Keychain/KeychainStore.swift Remaindr/Remaindr/App/RemaindrApp.swift docs/plans/2026-08-17-security-audit-fixes.md && git commit -m "fix(security): store keys WhenUnlockedThisDeviceOnly and upgrade existing items"`
+- [x] Step 6: Commit - `git add Remaindr/Remaindr/Keychain/KeychainStore.swift Remaindr/Remaindr/App/RemaindrApp.swift docs/plans/2026-08-17-security-audit-fixes.md && git commit -m "fix(security): store keys WhenUnlockedThisDeviceOnly and upgrade existing items"`
 
 ---
 
+> Deviation: broken plan assumption. macOS 26 never reports `kSecAttrAccessible` back from `SecItemCopyMatching` and treats it as a non-discriminating query constraint, verified empirically against the live keychain, so the read-back guard in the planned `upgradeAccessibility` can never work and the planned harness Expected (`FRESH=true`/`UPGRADED=true`) is unsatisfiable on this OS.
+      Corrections applied: (1) `static let accessibility: String = kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String` - Swift 6 rejects a stored `CFString` static and the cast needs to be explicit; (2) `guard let stored = try? value(for: kind), !stored.isEmpty` - `try?` already flattens the optional so the second `let stored` did not compile; (3) `upgradeAccessibility()` rewrites unconditionally and the once-only gate lives in `RemaindrApp.init()` behind a new `Preferences.keychainAccessibilityUpgraded` flag; (4) Step 4's harness was replaced with one asserting what is observable on this OS (`ROUNDTRIP`, `MIGRATION_PRESERVES`, `IDEMPOTENT`, `ABSENT_STAYS_ABSENT`, `CLEANED`, all `true`), with the strict class itself verified by code inspection at `KeychainStore.swift:19,40`; (5) Preferences.swift and ConfigFileStore.swift joined the task's Files block to carry the flag.
 ### Task 4: Size cap and overflow-safe aggregation on the session scan
 
 Fixes F-05.
