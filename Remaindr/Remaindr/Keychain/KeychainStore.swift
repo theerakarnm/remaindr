@@ -16,7 +16,7 @@ struct KeychainStore: Sendable {
 
     /// The strictest class that still allows unattended refresh: the item never
     /// migrates to another device and is unavailable until the keychain unlocks.
-    static let accessibility: String = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+    static let accessibility: String = kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String
 
     private func query(_ account: String) -> [String: Any] {
         [
@@ -70,7 +70,7 @@ struct KeychainStore: Sendable {
     func upgradeAccessibility() {
         for kind in ProviderKind.allCases {
             guard let account = kind.keychainAccount else { continue }
-            guard let stored = try? value(for: kind), let stored, !stored.isEmpty else { continue }
+            guard let stored = try? value(for: kind), !stored.isEmpty else { continue }
             var attributes = query(account)
             attributes[kSecReturnAttributes as String] = true
             var result: CFTypeRef?
