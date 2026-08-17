@@ -119,7 +119,7 @@ Fixes the project half of F-01: an explicit entitlements file, wired into both t
 
 **Gotcha:** the project file sits at `Remaindr/Remaindr.xcodeproj`, so build-setting paths are relative to `Remaindr/`: the file is stored at `Remaindr/Remaindr/Remaindr.entitlements` and referenced as `Remaindr/Remaindr.entitlements`. This was probed in a scratch worktree during planning and the build succeeded.
 
-- [ ] Step 1: Create `Remaindr/Remaindr/Remaindr.entitlements` with exactly:
+- [x] Step 1: Create `Remaindr/Remaindr/Remaindr.entitlements` with exactly:
 
       ```xml
       <?xml version="1.0" encoding="UTF-8"?>
@@ -129,7 +129,7 @@ Fixes the project half of F-01: an explicit entitlements file, wired into both t
       </plist>
       ```
 
-- [ ] Step 2: In `Remaindr/Remaindr.xcodeproj/project.pbxproj`, in BOTH target configurations (the Debug block `AA00000000000000000000E0` and the Release block `AA00000000000000000000F0`), insert one line directly after `CODE_SIGN_STYLE = Automatic;` (lines 164 and 185 at base commit):
+- [x] Step 2: In `Remaindr/Remaindr.xcodeproj/project.pbxproj`, in BOTH target configurations (the Debug block `AA00000000000000000000E0` and the Release block `AA00000000000000000000F0`), insert one line directly after `CODE_SIGN_STYLE = Automatic;` (lines 164 and 185 at base commit):
 
       ```
       				CODE_SIGN_ENTITLEMENTS = Remaindr/Remaindr.entitlements;
@@ -137,7 +137,7 @@ Fixes the project half of F-01: an explicit entitlements file, wired into both t
 
       The indentation is four tabs, matching the surrounding lines. The string `CODE_SIGN_STYLE = Automatic;` appears exactly twice in the file, once per target configuration.
 
-- [ ] Step 3: Verify - Run:
+- [x] Step 3: Verify - Run:
 
       ```bash
       cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr
@@ -149,7 +149,7 @@ Fixes the project half of F-01: an explicit entitlements file, wired into both t
 
       Expected: `Remaindr/Remaindr/Remaindr.entitlements: OK`, then `2`, then `** BUILD SUCCEEDED **`, then `0`.
 
-- [ ] Step 4: Commit - `git add Remaindr/Remaindr/Remaindr.entitlements Remaindr/Remaindr.xcodeproj/project.pbxproj docs/plans/2026-08-17-security-audit-fixes.md && git commit -m "fix(security): declare explicit app entitlements"`
+- [x] Step 4: Commit - `git add Remaindr/Remaindr/Remaindr.entitlements Remaindr/Remaindr.xcodeproj/project.pbxproj docs/plans/2026-08-17-security-audit-fixes.md && git commit -m "fix(security): declare explicit app entitlements"`
 
 ---
 
