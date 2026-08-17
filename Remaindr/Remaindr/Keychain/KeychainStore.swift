@@ -78,8 +78,21 @@ struct KeychainStore: Sendable {
     }
 
     /// Cheap presence check for the Settings UI and for pausing the refresh timer.
+    /// It must never ask for `kSecValueData`: the data read is the operation macOS gates
+    /// behind the item's ACL and partition list, and answering it costs the user a login
+    /// keychain password prompt. An attributes-only match is served from the item's
+    /// plaintext metadata columns and never prompts. Measured on macOS 26.2 with prompts
+    /// disabled: the data query returns errSecAuthFailed (-25293), the attributes query
+    /// returns errSecSuccess.
+    /// The trade is deliberate - this now answers "does the item exist", not "can this
+    /// build read it", so a saved key stops reading as "Not set" after an app update.
     func hasKey(for kind: ProviderKind) -> Bool {
-        ((try? value(for: kind)) ?? nil) != nil
+        guard let account = kind.keychainAccount else { return false }
+        var attributes = query(account)
+        attributes[kSecReturnAttributes as String] = true
+        attributes[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        return SecItemCopyMatching(attributes as CFDictionary, &result) == errSecSuccess
     }
 
     /// Reads a generic-password item another app stored, such as Claude Code's OAuth

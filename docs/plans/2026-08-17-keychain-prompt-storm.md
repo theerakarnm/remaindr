@@ -250,7 +250,7 @@ Task 2 is the task that closes it, by making the repeat reads stop entirely. Lan
 **Rollback:** ordinary code change - `git revert` is the answer. If Preflight found a leftover verify item, clear it with `security delete-generic-password -s com.theerakarn.Remaindr.verify -a deepseek 2>/dev/null; security delete-generic-password -s com.theerakarn.Remaindr.verify -a zai 2>/dev/null; true`.
 
 **Steps:**
-- [ ] Step 1: In `Remaindr/Remaindr/Keychain/KeychainStore.swift`, replace the whole `hasKey(for:)` member (anchor: `/// Cheap presence check for the Settings UI and for pausing the refresh timer.`, that doc comment through the closing brace of the function, ~L80-83) with:
+- [x] Step 1: In `Remaindr/Remaindr/Keychain/KeychainStore.swift`, replace the whole `hasKey(for:)` member (anchor: `/// Cheap presence check for the Settings UI and for pausing the refresh timer.`, that doc comment through the closing brace of the function, ~L80-83) with:
 
       ```swift
       /// Cheap presence check for the Settings UI and for pausing the refresh timer.
@@ -272,7 +272,7 @@ Task 2 is the task that closes it, by making the repeat reads stop entirely. Lan
       }
       ```
 
-- [ ] Step 2: Verify - Run (dedent the block to column 0 first; the `EOF` terminators must start at the beginning of their lines):
+- [x] Step 2: Verify - Run (dedent the block to column 0 first; the `EOF` terminators must start at the beginning of their lines):
 
       ```bash
       rm -rf /tmp/kc-verify && mkdir -p /tmp/kc-verify/seed /tmp/kc-verify/check
@@ -317,9 +317,11 @@ Task 2 is the task that closes it, by making the repeat reads stop entirely. Lan
       ```
 
       `PRESENCE=false` is the pre-change behaviour and means the edit did not take. A `COMPILE_FAILED_*` line means the harness never ran; fix the compile rather than reading the build result below it.
+
+      > Deviation (executed): `xcodebuild ... | tail -1` on this machine emits the trailing blank line of xcodebuild's output, not the `** BUILD SUCCEEDED **` line, so the fifth line of stdout is empty. The substantive condition was confirmed from the log: `grep -c 'BUILD SUCCEEDED' /tmp/kc-build.log` = `1`, `grep -c 'BUILD FAILED'` = `0`, `warnings=0`. Same note applies to every later Verify's build line.
       The `-o` names deliberately differ from the harness directory names: `-o /tmp/kc-verify/seed` would make the linker fail with `errno=21 (Is a directory)`.
 
-- [ ] Step 3: Commit - `git add Remaindr/Remaindr/Keychain/KeychainStore.swift && git commit -m "fix(keychain): answer presence checks from item metadata, not the secret"`
+- [x] Step 3: Commit - `git add Remaindr/Remaindr/Keychain/KeychainStore.swift && git commit -m "fix(keychain): answer presence checks from item metadata, not the secret"`
 
 ---
 
