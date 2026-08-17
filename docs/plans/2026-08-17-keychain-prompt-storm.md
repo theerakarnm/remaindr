@@ -18,15 +18,15 @@ A process-wide `SecretCache` collapses the repeated data reads the five-minute r
 
 **Spec:** none - planned from conversation. The report is a screenshot of the macOS dialog "security wants to use your confidential information stored in "com.theerakarn.Remaindr.pdmn" in your keychain. To allow this, enter the "login" keychain password." plus the user's statement: "there is many of password prompt that make me annoying. I add password like 5-6 times after I have running this app."
 
-**Base commit:** `78075e1`. Every line reference, anchor, and "already exists" claim below describes THIS tree. When an anchor does not match, run `git log --oneline 78075e1..HEAD` to tell "the plan was wrong" apart from "the file moved on".
+**Base commit:** `1a86754`, with `Remaindr/Remaindr/Keychain/KeychainStore.swift` at md5 `1b663660a4588856f8ca3959714d40b4`. Every line reference, anchor, and "already exists" claim below describes THIS tree. When an anchor does not match, run `git log --oneline 1a86754..HEAD` to tell "the plan was wrong" apart from "the file moved on".
 
-**Confidence:** 9/10 - the mechanism and every Expected value below were measured on this machine, not inferred; the single deduction is that `Remaindr/Remaindr/Keychain/KeychainStore.swift` was being edited by a concurrent execution of `docs/plans/2026-08-17-security-audit-fixes.md` while this plan was written (six commits between 09:19 and 09:29), and all three code tasks touch that one file.
+**Confidence:** 9/10 - the mechanism and every Expected value below were measured on this machine and re-measured against the base commit above, not inferred. The single deduction is that `Remaindr/Remaindr/Keychain/KeychainStore.swift` was being edited by a concurrent execution of `docs/plans/2026-08-17-security-audit-fixes.md` throughout the writing of this plan (it moved three times between 09:19 and 09:37, the last change rewriting `upgradeAccessibility()`), and all three code tasks touch that one file. Work from the anchors, not the line numbers.
 
 **NOT building:**
 - Developer ID signing or notarization. It is the only thing that makes "Always Allow" survive an app update (measured: a signed app's partition entry is `teamid:XXXXXXXXXX`, this app's is `cdhash:<one build>`), but it needs a paid Apple Developer account this machine does not have (`security find-identity -v -p codesigning` prints `0 valid identities found`), and `make-dmg.sh` already has the signing hook from the in-flight security plan.
 - Moving items to the data protection keychain (`kSecUseDataProtectionKeychain: true`), which has no ACL prompts at all. Measured on this machine: an entitlement-free binary gets `SecItemAdd` status `-34018` (`errSecMissingEntitlement`), so this is unreachable until the app is signed with a real Team ID and carries a `keychain-access-groups` entitlement. Revisit only after Developer ID signing lands.
 - Loosening the items' ACL to "allow all applications" (`SecAccessCreate` with a nil trusted-application list). It would silence the prompts by letting any process on the machine read the API keys, which contradicts `Remaindr/Remaindr/Keychain/KeychainStore.swift:8-9` and `SECURITY_AUDIT.md`.
-- Removing or re-scoping `upgradeAccessibility()` (`Remaindr/Remaindr/Keychain/KeychainStore.swift:71-78`). It is already gated to run once by `preferences.keychainAccessibilityUpgraded` (`Remaindr/Remaindr/App/RemaindrApp.swift:11-14`), and Task 3 makes its rewrite prompt-free. See the note under Diagnosis for the measured fact that makes it a no-op on this keychain; that is the in-flight security plan's call to make, not this one's.
+- Touching `upgradeAccessibility()` (`Remaindr/Remaindr/Keychain/KeychainStore.swift:67-78`). At the base commit it already updates the accessibility attribute in place with `SecItemUpdate`, never reads the secret, and is gated to run once by `preferences.keychainAccessibilityUpgraded` (`Remaindr/Remaindr/App/RemaindrApp.swift:11-14`), so it costs no prompt. See Diagnosis point 5 for the measured fact that makes it a no-op on this keychain; acting on that is the in-flight security plan's call, not this one's.
 - Consolidating the z.ai and DeepSeek keys into one keychain item. It would cut the worst-case per-build prompt count from three to two, at the cost of a storage-format migration; not worth it once each item costs at most one prompt per launch.
 - Any new UI, setting, toggle, or onboarding screen.
 
@@ -46,8 +46,8 @@ foreign Claude Code-credentials: data                status -25293
 foreign Claude Code-credentials: attrs only          OK (no prompt)
 ```
 
-**2. The app asks for data five times per refresh cycle, and `hasKey` is three of them.**
-`hasKey(for:)` is implemented as `((try? value(for: kind)) ?? nil) != nil` (`Remaindr/Remaindr/Keychain/KeychainStore.swift:80-82`), so every presence check is a full secret read.
+**2. The app asks for secret data five times per refresh cycle, and `hasKey` is two of them.**
+`hasKey(for:)` is implemented as `((try? value(for: kind)) ?? nil) != nil` (`Remaindr/Remaindr/Keychain/KeychainStore.swift:81-83`), so every presence check is a full secret read.
 Per cycle: `ProviderStore.anyConfigured` calls it for z.ai and DeepSeek (`Remaindr/Remaindr/UI/ProviderStore.swift:28`) on `RefreshScheduler.start()` and again on every tick (`Remaindr/Remaindr/Refresh/RefreshScheduler.swift:18-27`), then `refreshAll` reads the z.ai key (`Remaindr/Remaindr/Providers/ZAIProvider.swift:30`), the DeepSeek key (`Remaindr/Remaindr/Providers/DeepSeekProvider.swift:32`), and Claude Code's credential blob (`Remaindr/Remaindr/Providers/ClaudeAccountUsage.swift:30`).
 Opening Settings adds three more (`Remaindr/Remaindr/UI/SettingsView.swift:87`).
 Nothing caches, so answering "Allow" rather than "Always Allow" means being asked again five minutes later, forever.
@@ -180,7 +180,7 @@ Establishing new convention: none. This plan reuses the `swiftc` harness precede
 
 ### PERISHABLE - recapture before task 1
 
-- **A concurrent agent was executing `docs/plans/2026-08-17-security-audit-fixes.md` against this same file.** Check: `git log --format='%h %ad %s' --date=format:'%H:%M:%S' -5 && git status --porcelain && md5 -q Remaindr/Remaindr/Keychain/KeychainStore.swift` - the file was `a86bdb722b1c76ce46a3080ad397b36a` at `78075e1`. Needed by: Tasks 1, 2, 3, which all edit that file. If the hash differs, re-read the file and re-anchor before editing; if the working tree is dirty or that plan still has unticked tasks touching `KeychainStore.swift`, STOP and ask rather than racing it.
+- **A concurrent agent was executing `docs/plans/2026-08-17-security-audit-fixes.md` against this same file.** Check: `git log --format='%h %ad %s' --date=format:'%H:%M:%S' -5 && git status --porcelain && md5 -q Remaindr/Remaindr/Keychain/KeychainStore.swift` - the file was `1b663660a4588856f8ca3959714d40b4` at `1a86754`. Needed by: Tasks 1, 2, 3, which all edit that file. If the hash differs, re-read the file and re-anchor before editing; if the working tree is dirty or that plan still has unticked tasks touching `KeychainStore.swift`, STOP and ask rather than racing it.
 - **Baseline build is green with zero warnings.** Check: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Debug -derivedDataPath /tmp/kc-dd build 2>&1 | tee /tmp/kc-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/kc-build.log || true)"` - recorded: `** BUILD SUCCEEDED **` and `warnings=0`, in about 13 seconds. Needed by: every task's Verify, which asserts the same two lines.
 - **No leftover verify items in the login keychain.** Check: `security find-generic-password -s com.theerakarn.Remaindr.verify >/dev/null 2>&1 && echo LEFTOVER || echo clean` - recorded: `clean`. Needed by: Tasks 1-3, whose harnesses seed and delete under that service. If it prints `LEFTOVER`, clear it with the Rollback command on Task 1 before starting.
 - **The user's real keys may or may not be stored.** Check: `for a in zai deepseek anthropic; do security find-generic-password -s com.theerakarn.Remaindr -a $a >/dev/null 2>&1 && echo "$a present" || echo "$a absent"; done` - recorded: `zai present`, `deepseek present`, `anthropic absent`. Needed by: the End-to-end verification only. No task Expected depends on it; the task harnesses use the throwaway `.verify` service precisely so they do not.
@@ -199,7 +199,7 @@ Establishing new convention: none. This plan reuses the `swiftc` harness precede
 ### Task 1: Presence check stops reading the secret
 
 **Files:**
-- Modify: `Remaindr/Remaindr/Keychain/KeychainStore.swift` (anchor: `/// Cheap presence check for the Settings UI`, ~L79-82)
+- Modify: `Remaindr/Remaindr/Keychain/KeychainStore.swift` (anchor: `/// Cheap presence check for the Settings UI`, ~L80-83)
 - Harness (throwaway, written by Step 2, never committed): `/tmp/kc-verify/seed/main.swift`, `/tmp/kc-verify/check/main.swift`
 
 **Interfaces:**
@@ -213,7 +213,7 @@ After this change it returns `true` for any item that exists, whether or not thi
 **Rollback:** ordinary code change - `git revert` is the answer. If Preflight found a leftover verify item, clear it with `security delete-generic-password -s com.theerakarn.Remaindr.verify -a deepseek 2>/dev/null; security delete-generic-password -s com.theerakarn.Remaindr.verify -a zai 2>/dev/null; true`.
 
 **Steps:**
-- [ ] Step 1: In `Remaindr/Remaindr/Keychain/KeychainStore.swift`, replace the whole `hasKey(for:)` member (anchor: `/// Cheap presence check for the Settings UI and for pausing the refresh timer.`, that doc comment through the closing brace of the function, ~L79-82) with:
+- [ ] Step 1: In `Remaindr/Remaindr/Keychain/KeychainStore.swift`, replace the whole `hasKey(for:)` member (anchor: `/// Cheap presence check for the Settings UI and for pausing the refresh timer.`, that doc comment through the closing brace of the function, ~L80-83) with:
 
       ```swift
       /// Cheap presence check for the Settings UI and for pausing the refresh timer.
@@ -287,7 +287,7 @@ After this change it returns `true` for any item that exists, whether or not thi
 ### Task 2: Read each secret at most once per launch
 
 **Files:**
-- Modify: `Remaindr/Remaindr/Keychain/KeychainStore.swift` (anchors: `/// The only place an API key is ever read or written.` ~L8, `private func query(_ account: String)` ~L21, `func value(for kind: ProviderKind)` ~L45, `func remove(_ kind: ProviderKind)` ~L59, `func foreignValue(service: String)` ~L87)
+- Modify: `Remaindr/Remaindr/Keychain/KeychainStore.swift` (anchors: `/// The only place an API key is ever read or written.` ~L8, `private func query(_ account: String)` ~L21, `func value(for kind: ProviderKind)` ~L45, `func remove(_ kind: ProviderKind)` ~L59, `func foreignValue(service: String)` ~L88)
 - Harness (throwaway, written by Step 4, never committed): `/tmp/kc-verify/cache/main.swift`
 
 **Interfaces:**
@@ -381,7 +381,7 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
           }
       ```
 
-      Replace the whole `foreignValue(service:)` member (anchor: `/// Reads a generic-password item another app stored`, doc comment through the member's closing brace, ~L84-101 at base) with:
+      Replace the whole `foreignValue(service:)` member (anchor: `/// Reads a generic-password item another app stored`, doc comment through the member's closing brace, ~L85-102 at base) with:
 
       ```swift
           /// Reads a generic-password item another app stored, such as Claude Code's OAuth
@@ -605,7 +605,7 @@ Do not soften that into "you will not be asked again".
 
 - **A Verify prints a keychain status other than the Expected one (`-25293`, `-25299`, `-25244`, `-34018`).** Detect: the harness line differs from the Expected block. Respond: do NOT relax the Expected. Re-run the Preflight leftover check, clear `com.theerakarn.Remaindr.verify` with the Task 1 Rollback command, and re-run once. If it still differs, STOP and report the exact status - the mechanism this plan is built on has changed.
 - **A modal keychain dialog appears while running a Verify.** Detect: the harness hangs instead of printing. Respond: the harness lost its `SecKeychainSetUserInteractionAllowed(false)` line. Cancel, restore the line, re-run. Never answer the dialog to make a Verify pass - that grants the harness binary access and destroys the test's meaning.
-- **`Remaindr/Remaindr/Keychain/KeychainStore.swift` differs from md5 `a86bdb722b1c76ce46a3080ad397b36a`.** Detect: the PERISHABLE Preflight check. Respond: re-read the file, confirm the concurrent security-audit plan is not mid-task in it, re-anchor the edits by symbol rather than line number, and note the drift on the task. If that plan still has unticked steps touching this file, STOP and ask.
+- **`Remaindr/Remaindr/Keychain/KeychainStore.swift` differs from md5 `1b663660a4588856f8ca3959714d40b4`.** Detect: the PERISHABLE Preflight check. Respond: re-read the file, confirm the concurrent security-audit plan is not mid-task in it, re-anchor the edits by symbol rather than line number, and note the drift on the task. If that plan still has unticked steps touching this file, STOP and ask.
 
 ## End-to-end verification
 
