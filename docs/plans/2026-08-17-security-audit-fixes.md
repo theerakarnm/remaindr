@@ -252,6 +252,7 @@ Fixes the shipping half of F-01, all of F-02, and all of F-04.
       ```
 
       Expected: `SYNTAX_OK`, then `0`, then `1`, then `2`.
+      > Deviation: Expected `2` for the last count was a plan miscount; the file correctly contains 3 occurrences (explanatory comment, the `grep -q` assertion, and the error message). All three verified by reading the file.
 
 - [ ] Step 6: Verify - Run (the script's re-sign and assertion steps, executed directly against the Task 1 build):
 
