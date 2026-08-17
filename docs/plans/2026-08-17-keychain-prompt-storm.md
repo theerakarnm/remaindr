@@ -213,7 +213,7 @@ After this change it returns `true` for any item that exists, whether or not thi
 **Rollback:** ordinary code change - `git revert` is the answer. If Preflight found a leftover verify item, clear it with `security delete-generic-password -s com.theerakarn.Remaindr.verify -a deepseek 2>/dev/null; security delete-generic-password -s com.theerakarn.Remaindr.verify -a zai 2>/dev/null; true`.
 
 **Steps:**
-- [ ] Step 1: In `Remaindr/Remaindr/Keychain/KeychainStore.swift`, replace the whole `hasKey(for:)` member - the doc comment on line 79 through the closing brace on line 82 - with:
+- [ ] Step 1: In `Remaindr/Remaindr/Keychain/KeychainStore.swift`, replace the whole `hasKey(for:)` member (anchor: `/// Cheap presence check for the Settings UI and for pausing the refresh timer.`, that doc comment through the closing brace of the function, ~L79-82) with:
 
       ```swift
       /// Cheap presence check for the Settings UI and for pausing the refresh timer.
@@ -302,7 +302,7 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
 **Rollback:** ordinary code change - `git revert` is the answer.
 
 **Steps:**
-- [ ] Step 1: In `Remaindr/Remaindr/Keychain/KeychainStore.swift`, insert the cache immediately above the `/// The only place an API key is ever read or written.` doc comment (line 8), so it sits between `KeychainError` and `KeychainStore`:
+- [ ] Step 1: In `Remaindr/Remaindr/Keychain/KeychainStore.swift`, insert the cache immediately above the `/// The only place an API key is ever read or written.` doc comment (~L8), so it sits between `KeychainError` and `KeychainStore`:
 
       ```swift
       /// Process-wide cache of the secret material already read out of the Keychain.
@@ -344,7 +344,7 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
 
       ```
 
-- [ ] Step 2: In the same file, add the cache key helper and the single gated read directly after the closing brace of `query(_:)` (line 27):
+- [ ] Step 2: In the same file, add the cache key helper and the single gated read directly after the closing brace of `query(_:)` (anchor: `private func query(_ account: String) -> [String: Any]`, ~L21-27 at base, shifted down by Step 1):
 
       ```swift
 
@@ -366,8 +366,9 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
           }
       ```
 
-- [ ] Step 3: In the same file, route the three readers and the two writers through the cache.
-      Replace the whole `value(for:)` member (lines 45-57) with:
+- [ ] Step 3: In the same file, route the readers and the writers through the cache.
+      Steps 1 and 2 pushed everything below them down by roughly fifty lines, so work from the anchors, not from the base line numbers.
+      Replace the whole `value(for:)` member (anchor: `func value(for kind: ProviderKind) throws -> String?`, its `guard let account` through its closing brace, ~L45 at base) with:
 
       ```swift
           /// Reads the stored key, at most once per process. See `SecretCache`.
@@ -380,7 +381,7 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
           }
       ```
 
-      Replace the whole `foreignValue(service:)` member (doc comment on line 84 through its closing brace on line 101) with:
+      Replace the whole `foreignValue(service:)` member (anchor: `/// Reads a generic-password item another app stored`, doc comment through the member's closing brace, ~L84-101 at base) with:
 
       ```swift
           /// Reads a generic-password item another app stored, such as Claude Code's OAuth
@@ -400,8 +401,9 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
           }
       ```
 
-      In `set(_:for:)`, insert `SecretCache.shared.invalidate(cacheKey(account))` as the line directly above the `// SecItemAdd returns errSecDuplicateItem` comment (line 36).
-      In `remove(_:)`, insert the same call directly above `let status = SecItemDelete(query(account) as CFDictionary)` (line 61).
+      In `set(_:for:)`, insert `SecretCache.shared.invalidate(cacheKey(account))` as the line directly above the `// SecItemAdd returns errSecDuplicateItem for an existing account, so replace.` comment (~L36 at base).
+      In `remove(_:)`, insert the same call directly above `let status = SecItemDelete(query(account) as CFDictionary)` (~L61 at base).
+      Both anchors are unique in the file; grep for them rather than counting lines.
 
 - [ ] Step 4: Verify - Run:
 
@@ -465,7 +467,7 @@ Passing `kSecAttrAccessible` in the update dictionary is accepted by this keycha
 **Rollback:** ordinary code change - `git revert` is the answer. The task writes only to `com.theerakarn.Remaindr.verify`, cleaned up by its own Verify.
 
 **Steps:**
-- [ ] Step 1: In `Remaindr/Remaindr/Keychain/KeychainStore.swift`, replace the body of `set(_:for:)` from the `// SecItemAdd returns errSecDuplicateItem` comment through the `guard status == errSecSuccess else { throw ... }` line with:
+- [ ] Step 1: In `Remaindr/Remaindr/Keychain/KeychainStore.swift`, replace the tail of `set(_:for:)` - from the `// SecItemAdd returns errSecDuplicateItem for an existing account, so replace.` comment through the `guard status == errSecSuccess else { throw KeychainError.unexpectedStatus(status) }` line, which is everything after the `SecretCache.shared.invalidate(cacheKey(account))` call Task 2 added - with:
 
       ```swift
               let data = Data(trimmed.utf8)
