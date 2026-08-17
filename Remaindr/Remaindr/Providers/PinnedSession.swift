@@ -66,7 +66,7 @@ enum PinnedSession {
                 return (.cancelAuthenticationChallenge, nil)
             }
             let hashes = Set(chain.map(PinnedSession.certificateHash))
-            guard !hostPins.isDisjoint(with: hashes) else {
+            guard !Set(hostPins).isDisjoint(with: hashes) else {
                 return (.cancelAuthenticationChallenge, nil)
             }
             var error: CFError?
