@@ -569,7 +569,7 @@ Fixes F-06. Four files, one atomic change: the delegate, its error surface, and 
 
 **Gotcha:** pins are SHA-256 over the whole DER certificate, not over the SPKI, because `SecKeyCopyExternalRepresentation` returns the raw key without the SubjectPublicKeyInfo wrapper and no first-party API reconstructs it. Certificate pinning over the leaf plus issuing CA is the TrustKit `SSLPinMode.certificate` shape: a leaf renewal is covered by the CA pin, a CA change is a visible failure until the pins are refreshed.
 
-- [ ] Step 1: Create `Remaindr/Remaindr/Providers/PinnedSession.swift` with exactly:
+- [x] Step 1: Create `Remaindr/Remaindr/Providers/PinnedSession.swift` with exactly:
 
       ```swift
       import CryptoKit
@@ -655,7 +655,7 @@ Fixes F-06. Four files, one atomic change: the delegate, its error surface, and 
 
       If Swift 6 strict concurrency rejects `@unchecked Sendable` on the delegate or the async challenge handler signature, apply the smallest correction the compiler asks for (for example dropping `@unchecked Sendable`, or switching to the completion-handler form) and record a `> Deviation:` line; the fail-closed semantics must survive any such correction.
 
-- [ ] Step 2: In `ProviderStatus.swift`, add a case to `ProviderError` after `noActivePlan` (line 50 at base):
+- [x] Step 2: In `ProviderStatus.swift`, add a case to `ProviderError` after `noActivePlan` (line 50 at base):
 
       ```swift
       /// The server's certificate chain did not match a pinned certificate.
@@ -668,7 +668,7 @@ Fixes F-06. Four files, one atomic change: the delegate, its error surface, and 
       case .untrustedServer: return "Connection untrusted"
       ```
 
-- [ ] Step 3: In `UsageProvider.swift`, inside `mapTransportFailure`'s `switch` (line 18 at base), add `.cancelled` to the mapped set with its own return, and extend the doc comment above the method by one line:
+- [x] Step 3: In `UsageProvider.swift`, inside `mapTransportFailure`'s `switch` (line 18 at base), add `.cancelled` to the mapped set with its own return, and extend the doc comment above the method by one line:
 
       ```swift
       case .notConnectedToInternet, .networkConnectionLost, .cannotFindHost,
@@ -681,7 +681,7 @@ Fixes F-06. Four files, one atomic change: the delegate, its error surface, and 
           return ProviderError.untrustedServer
       ```
 
-- [ ] Step 4: In `ProviderStore.swift`, wire the pinned session into all three providers inside `provider(for:)` (lines 32-42 at base):
+- [x] Step 4: In `ProviderStore.swift`, wire the pinned session into all three providers inside `provider(for:)` (lines 32-42 at base):
 
       ```swift
       case .claude:
@@ -694,7 +694,7 @@ Fixes F-06. Four files, one atomic change: the delegate, its error surface, and 
           return DeepSeekProvider(keychain: keychain, session: PinnedSession.shared)
       ```
 
-- [ ] Step 5: Verify - Run (live pin check; three bare TLS handshakes and GETs to the host roots, no credentials, no API call, nothing billed):
+- [x] Step 5: Verify - Run (live pin check; three bare TLS handshakes and GETs to the host roots, no credentials, no API call, nothing billed):
 
       ```bash
       mkdir -p /tmp/fix-pin && cat > /tmp/fix-pin/main.swift <<'EOF'
@@ -743,7 +743,7 @@ Fixes F-06. Four files, one atomic change: the delegate, its error surface, and 
       GARBAGE_PINS_CANCEL=true
       ```
 
-- [ ] Step 6: Verify - Run:
+- [x] Step 6: Verify - Run:
 
       ```bash
       cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr
@@ -753,7 +753,7 @@ Fixes F-06. Four files, one atomic change: the delegate, its error surface, and 
 
       Expected: `** BUILD SUCCEEDED **`, then `0`.
 
-- [ ] Step 7: Commit - `git add Remaindr/Remaindr/Providers/PinnedSession.swift Remaindr/Remaindr/Models/ProviderStatus.swift Remaindr/Remaindr/Providers/UsageProvider.swift Remaindr/Remaindr/UI/ProviderStore.swift docs/plans/2026-08-17-security-audit-fixes.md && git commit -m "fix(security): pin TLS certificates on all three provider endpoints, fail closed"`
+- [x] Step 7: Commit - `git add Remaindr/Remaindr/Providers/PinnedSession.swift Remaindr/Remaindr/Models/ProviderStatus.swift Remaindr/Remaindr/Providers/UsageProvider.swift Remaindr/Remaindr/UI/ProviderStore.swift docs/plans/2026-08-17-security-audit-fixes.md && git commit -m "fix(security): pin TLS certificates on all three provider endpoints, fail closed"`
 
 ---
 
@@ -776,3 +776,5 @@ Fixes F-06. Four files, one atomic change: the delegate, its error surface, and 
 - If Task 5's delegate fails Swift 6 strict concurrency in a way the noted corrections cannot satisfy, STOP and report rather than weakening the isolation model (for example by making `pins` mutable shared state).
 - If Task 2 Step 6 still shows `get-task-allow` after the re-sign, STOP: the entitlements file path or the signature operation is wrong, and shipping would fail the assertion in a real run.
 - If any live pin check in Task 5 Step 5 returns `CANCELLED` for a pinned host, do not delete the pin to make the check pass; re-capture the chain, and if the CA genuinely changed, record it as a deviation with both old and new pins.
+
+> Deviation: three corrections, none changing the fail-closed semantics. (1) `hostPins.isDisjoint(with:)` does not exist on `Array`; the code now reads `Set(hostPins).isDisjoint(with: hashes)`. (2) The Step 5 harness probed `https://<host>/`, and `api.z.ai/` 301-redirects to `z.ai`, an unpinned host, so the delegate correctly fail-closed on the redirect; the harness now probes each host's real unauthenticated API path (`/api/oauth/usage`, `/api/monitor/usage/quota/limit`, `/user/balance`), all of which stay on-host. Observed results: `HTTP 429`, `HTTP 200`, `HTTP 401`, plus `GARBAGE_PINS_CANCEL=true`. No credentials were sent by any probe. (3) The earlier scratch typecheck of this file had silently covered only a truncated extraction, so the `isDisjoint` defect was caught here rather than during planning.
