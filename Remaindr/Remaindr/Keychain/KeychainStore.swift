@@ -65,19 +65,13 @@ struct KeychainStore: Sendable {
     }
 
     /// Rewrites this app's own items so items written by an older build pick up
-    /// the current accessibility class. Absent, empty, or already-current items
-    /// are left alone, and no other app's item is ever touched.
+    /// the current accessibility class. macOS never reports a generic password's
+    /// `kSecAttrAccessible` back, so the caller gates this to run exactly once.
+    /// Absent or empty items are skipped, and no other app's item is touched.
     func upgradeAccessibility() {
         for kind in ProviderKind.allCases {
-            guard let account = kind.keychainAccount else { continue }
+            guard kind.keychainAccount != nil else { continue }
             guard let stored = try? value(for: kind), !stored.isEmpty else { continue }
-            var attributes = query(account)
-            attributes[kSecReturnAttributes as String] = true
-            var result: CFTypeRef?
-            guard SecItemCopyMatching(attributes as CFDictionary, &result) == errSecSuccess,
-                  let item = result as? [String: Any],
-                  (item[kSecAttrAccessible as String] as? String) != Self.accessibility
-            else { continue }
             try? set(stored, for: kind)
         }
     }
