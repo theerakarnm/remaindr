@@ -9,8 +9,16 @@ struct ClaudeUsageEntry: Sendable, Equatable {
     let cacheReadTokens: Int
     let outputTokens: Int
 
+    /// Saturates rather than trapping: session files are local input this app
+    /// does not control, and a crashing menu bar app helps nobody.
     var totalTokens: Int {
-        inputTokens + cacheCreationTokens + cacheReadTokens + outputTokens
+        var total = 0
+        for count in [inputTokens, cacheCreationTokens, cacheReadTokens, outputTokens] {
+            let (sum, overflow) = total.addingReportingOverflow(count)
+            if overflow { return Int.max }
+            total = sum
+        }
+        return total
     }
 }
 
