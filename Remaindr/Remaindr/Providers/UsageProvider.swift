@@ -20,6 +20,10 @@ extension UsageProvider {
              .cannotConnectToHost, .dnsLookupFailed, .timedOut, .internationalRoamingOff,
              .dataNotAllowed, .secureConnectionFailed:
             return ProviderError.offline
+        case .cancelled:
+            // The pinning delegate is the only code path that cancels a challenge;
+            // no provider cancels its own requests.
+            return ProviderError.untrustedServer
         default:
             return error
         }

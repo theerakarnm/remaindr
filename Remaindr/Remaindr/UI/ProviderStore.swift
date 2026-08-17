@@ -33,11 +33,12 @@ final class ProviderStore {
         switch kind {
         case .claude:
             return ClaudeProvider(keychain: keychain,
+                                  session: PinnedSession.shared,
                                   allowBilledProbe: preferences.allowBilledClaudeProbe)
         case .zai:
-            return ZAIProvider(keychain: keychain)
+            return ZAIProvider(keychain: keychain, session: PinnedSession.shared)
         case .deepseek:
-            return DeepSeekProvider(keychain: keychain)
+            return DeepSeekProvider(keychain: keychain, session: PinnedSession.shared)
         }
     }
 
