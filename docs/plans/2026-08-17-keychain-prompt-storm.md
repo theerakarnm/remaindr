@@ -6,6 +6,14 @@
 > **For the executing agent:** Implement this plan in order, in a single worktree.
 > Steps use checkbox (`- [ ]`) syntax for tracking; tick them as you go.
 > Run the `## Preflight` checks BEFORE task 1 and report anything down.
+>
+> **Read this first.** While this plan was being written, a second agent was executing
+> `docs/plans/2026-08-17-security-audit-fixes.md` against the same file this plan edits.
+> It rewrote `Remaindr/Remaindr/Keychain/KeychainStore.swift` three times, and at 09:38 it
+> deleted this plan file outright as a "stray plan file" (commit `a505d84`); the copy you
+> are reading was restored from `1a86754`. Do not start until that plan is finished or
+> stopped, confirm the Preflight md5 still matches, and work from the anchors rather than
+> the line numbers.
 
 **Goal:** Stop Remaindr asking for the login keychain password five or six times per run, by never reading secret data when a presence check will do, reading each secret at most once per launch, and saving keys in place instead of destroying and recreating the item.
 
@@ -180,7 +188,7 @@ Establishing new convention: none. This plan reuses the `swiftc` harness precede
 
 ### PERISHABLE - recapture before task 1
 
-- **A concurrent agent was executing `docs/plans/2026-08-17-security-audit-fixes.md` against this same file.** Check: `git log --format='%h %ad %s' --date=format:'%H:%M:%S' -5 && git status --porcelain && md5 -q Remaindr/Remaindr/Keychain/KeychainStore.swift` - the file was `1b663660a4588856f8ca3959714d40b4` at `1a86754`. Needed by: Tasks 1, 2, 3, which all edit that file. If the hash differs, re-read the file and re-anchor before editing; if the working tree is dirty or that plan still has unticked tasks touching `KeychainStore.swift`, STOP and ask rather than racing it.
+- **A concurrent agent was executing `docs/plans/2026-08-17-security-audit-fixes.md` against this same file, and deleted this plan file once (commit `a505d84`, restored from `1a86754`).** Check: `git log --format='%h %ad %s' --date=format:'%H:%M:%S' -5 && git status --porcelain && md5 -q Remaindr/Remaindr/Keychain/KeychainStore.swift` - the file was `1b663660a4588856f8ca3959714d40b4` at `1a86754`. Needed by: Tasks 1, 2, 3, which all edit that file. If the hash differs, re-read the file and re-anchor before editing; if the working tree is dirty or that plan still has unticked tasks touching `KeychainStore.swift`, STOP and ask rather than racing it.
 - **Baseline build is green with zero warnings.** Check: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Debug -derivedDataPath /tmp/kc-dd build 2>&1 | tee /tmp/kc-build.log | tail -2; echo "warnings=$(grep -c ': warning: ' /tmp/kc-build.log || true)"` - recorded: `** BUILD SUCCEEDED **` and `warnings=0`, in about 13 seconds. Needed by: every task's Verify, which asserts the same two lines.
 - **No leftover verify items in the login keychain.** Check: `security find-generic-password -s com.theerakarn.Remaindr.verify >/dev/null 2>&1 && echo LEFTOVER || echo clean` - recorded: `clean`. Needed by: Tasks 1-3, whose harnesses seed and delete under that service. If it prints `LEFTOVER`, clear it with the Rollback command on Task 1 before starting.
 - **The user's real keys may or may not be stored.** Check: `for a in zai deepseek anthropic; do security find-generic-password -s com.theerakarn.Remaindr -a $a >/dev/null 2>&1 && echo "$a present" || echo "$a absent"; done` - recorded: `zai present`, `deepseek present`, `anthropic absent`. Needed by: the End-to-end verification only. No task Expected depends on it; the task harnesses use the throwaway `.verify` service precisely so they do not.
