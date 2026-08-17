@@ -94,17 +94,18 @@ hdiutil create -volname "$APP_NAME" \
                -format UDZO \
                "$DMG"
 
-# 4b. Notarize and staple when both a Developer ID identity and a stored
-#     notary profile exist. Store the profile once with:
-#       xcrun notarytool store-credentials NOTARY_PROFILE --apple-id <id> --team-id <team>
+# 4b. Apply the saved Finder layout to the final DMG. This must precede
+#     notarization: stapling has to be the last write to the image.
+if [ -f "$LAYOUT_SCRIPT" ]; then
+  osascript "$LAYOUT_SCRIPT"
+fi
+
+# 5. Notarize and staple when both a Developer ID identity and a stored notary
+#    profile exist. Store the profile once with:
+#      xcrun notarytool store-credentials NOTARY_PROFILE --apple-id <id> --team-id <team>
 if [ -n "$IDENTITY" ] && [ -n "${NOTARY_PROFILE:-}" ]; then
   xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
   xcrun stapler staple "$DMG"
-fi
-
-# 5. Apply the saved Finder layout to the final DMG
-if [ -f "$LAYOUT_SCRIPT" ]; then
-  osascript "$LAYOUT_SCRIPT"
 fi
 
 echo ""
