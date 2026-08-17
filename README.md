@@ -67,7 +67,9 @@ Claude has no public "remaining subscription quota" API, so its number is an est
 2. Move `Remaindr.app` to `/Applications`.
 3. Launch it — a new icon appears in your menu bar.
 
-> Not notarized/signed yet during early development — macOS Gatekeeper may warn on first launch. Right-click → Open to bypass, or build from source.
+> Early-development builds are not notarized.
+> Prefer building from source (below).
+> If you use a downloaded build, verify its SHA-256 against the checksum published with the release before opening it.
 
 ## Setup
 
