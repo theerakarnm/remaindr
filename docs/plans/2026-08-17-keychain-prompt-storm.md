@@ -56,11 +56,13 @@ Nothing caches, so answering "Allow" rather than "Always Allow" means being aske
 Dumping the `Partitions` ACL entry of the live items:
 
 ```
-[Chrome Safe Storage]     partitions: teamid:EQHXZ8M8AV, teamid:H36NPCN86W
-[Arc Safe Storage]        partitions: teamid:S6N382Y83G
-[Claude Code-credentials] partitions: apple-tool:, cdhash:f3004479c1920aa471d3a5c6fe8ec31f03b37e93
-[com.theerakarn.Remaindr] partitions: cdhash:f3004479c1920aa471d3a5c6fe8ec31f03b37e93
+[a Developer ID signed browser]  partitions: teamid:<10-char team id>, teamid:<10-char team id>
+[a second signed browser]        partitions: teamid:<10-char team id>
+[Claude Code-credentials]        partitions: apple-tool:, cdhash:f3004479c1920aa471d3a5c6fe8ec31f03b37e93
+[com.theerakarn.Remaindr]        partitions: cdhash:f3004479c1920aa471d3a5c6fe8ec31f03b37e93
 ```
+
+Re-run it yourself with `SecKeychainItemCopyAccess` + `SecAccessCopyACLList` and decode the hex `Partitions` plist; the three third-party team identifiers are redacted here because this file is committed.
 
 That cdhash is exactly `codesign -dvvv build/dmg-staging/Remaindr.app`'s `CDHash`, and its ACL names the trusted application as `/Volumes/Remaindr/Remaindr.app`, the DMG mount point.
 Properly signed apps get a `teamid:` partition that survives every update; an ad-hoc signature gets a `cdhash:` partition that dies with the next build.
@@ -106,7 +108,7 @@ The same measurement means `upgradeAccessibility()` can never observe its own ef
 Build on `query(_:)` and mutate a local copy; never assemble a competing dictionary literal for this app's own items.
 
 ### Error handling
-<!-- SOURCE: Remaindr/Remaindr/Keychain/KeychainStore.swift:4-6,51-56 -->
+<!-- SOURCE: Remaindr/Remaindr/Keychain/KeychainStore.swift:4-6,51-55 -->
 ```swift
 enum KeychainError: Error, Equatable {
     case unexpectedStatus(OSStatus)
@@ -133,7 +135,7 @@ A missing item is `nil`, not an error; any other non-success `OSStatus` is `Keyc
 Every non-obvious decision in this file is explained in a `///` comment saying why, not what. Match that.
 
 ### Concurrency
-<!-- SOURCE: Remaindr/Remaindr/Keychain/KeychainStore.swift:10, Remaindr/Remaindr/UI/ProviderStore.swift:13-16 -->
+<!-- SOURCE: Remaindr/Remaindr/Keychain/KeychainStore.swift:10, Remaindr/Remaindr/UI/ProviderStore.swift:11-13 -->
 ```swift
 struct KeychainStore: Sendable {
 ```
@@ -143,7 +145,7 @@ struct KeychainStore: Sendable {
 final class ProviderStore {
 ```
 
-`KeychainStore` is a `Sendable` value type reached from a `withTaskGroup` off the main actor (`Remaindr/Remaindr/UI/ProviderStore.swift:55-64`), so anything it touches must be safe from multiple threads without an actor hop.
+`KeychainStore` is a `Sendable` value type reached from a `withTaskGroup` off the main actor (`Remaindr/Remaindr/UI/ProviderStore.swift:54-64`), so anything it touches must be safe from multiple threads without an actor hop.
 
 ### Verification harness
 <!-- SOURCE: docs/plans/2026-08-16-aiusagebar-menu-bar-app.md:755-775 -->
@@ -198,6 +200,7 @@ Establishing new convention: none. This plan reuses the `swiftc` harness precede
 
 **Files:**
 - Modify: `Remaindr/Remaindr/Keychain/KeychainStore.swift` (anchor: `/// Cheap presence check for the Settings UI`, ~L79-82)
+- Harness (throwaway, written by Step 2, never committed): `/tmp/kc-verify/seed/main.swift`, `/tmp/kc-verify/check/main.swift`
 
 **Interfaces:**
 - Consumes: `ProviderKind.keychainAccount` (`Remaindr/Remaindr/Models/ProviderStatus.swift:33-39`) and the existing `private func query(_ account: String) -> [String: Any]`.
@@ -285,6 +288,7 @@ After this change it returns `true` for any item that exists, whether or not thi
 
 **Files:**
 - Modify: `Remaindr/Remaindr/Keychain/KeychainStore.swift` (anchors: `/// The only place an API key is ever read or written.` ~L8, `private func query(_ account: String)` ~L21, `func value(for kind: ProviderKind)` ~L45, `func remove(_ kind: ProviderKind)` ~L59, `func foreignValue(service: String)` ~L87)
+- Harness (throwaway, written by Step 4, never committed): `/tmp/kc-verify/cache/main.swift`
 
 **Interfaces:**
 - Consumes: `KeychainError.unexpectedStatus(OSStatus)` (`Remaindr/Remaindr/Keychain/KeychainStore.swift:4-6`), `private func query(_ account: String) -> [String: Any]`.
@@ -292,7 +296,7 @@ After this change it returns `true` for any item that exists, whether or not thi
 
 **Gotcha:** three things that are easy to get wrong here.
 `entries[key]` on a `[String: Result<String?, KeychainError>]` yields a double optional, so `if let cached = entries[key] { return try cached.get() }` is the correct shape and does exactly one dictionary lookup.
-The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll` fetches all three providers inside one `withTaskGroup` (`Remaindr/Remaindr/UI/ProviderStore.swift:55-64`), and without that the same item could raise two dialogs at once.
+The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll` fetches all three providers inside one `withTaskGroup` (`Remaindr/Remaindr/UI/ProviderStore.swift:54-64`), and without that the same item could raise two dialogs at once.
 `SecretCache` cannot be an `actor`, because `value(for:)` is a synchronous throwing function called from non-async code; `@unchecked Sendable` with an `NSLock` is the shape that satisfies Swift 6 strict concurrency here.
 
 **Rollback:** ordinary code change - `git revert` is the answer.
@@ -376,7 +380,7 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
           }
       ```
 
-      Replace the whole `foreignValue(service:)` member (lines 84-95, doc comment through closing brace) with:
+      Replace the whole `foreignValue(service:)` member (doc comment on line 84 through its closing brace on line 101) with:
 
       ```swift
           /// Reads a generic-password item another app stored, such as Claude Code's OAuth
@@ -447,7 +451,8 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
 ### Task 3: Save a key in place instead of destroying the item
 
 **Files:**
-- Modify: `Remaindr/Remaindr/Keychain/KeychainStore.swift` (anchor: `// SecItemAdd returns errSecDuplicateItem for an existing account, so replace.`, ~L36-42 at base, shifted by Task 2)
+- Modify: `Remaindr/Remaindr/Keychain/KeychainStore.swift` (anchor: `// SecItemAdd returns errSecDuplicateItem for an existing account, so replace.`, ~L36-42 at base, shifted down by Task 2)
+- Harness (throwaway, written by Step 2, never committed): `/tmp/kc-verify/save/main.swift`, reusing `/tmp/kc-verify/seed/main.swift` from Task 1
 
 **Interfaces:**
 - Consumes: `KeychainStore.accessibility` (`Remaindr/Remaindr/Keychain/KeychainStore.swift:19`), `private func query(_ account: String) -> [String: Any]`, `SecretCache.invalidate(_:)` from Task 2.
@@ -575,11 +580,22 @@ Do not soften that into "you will not be asked again".
       ```bash
       grep -c 'Why macOS asks for the keychain password' README.md
       grep -c 'macOS asks for your login keychain password' README.md
-      grep -c '—' README.md.new 2>/dev/null || grep -c '—' <(git diff -- README.md | grep '^+') || true
-      npx --yes markdownlint-cli2 README.md 2>/dev/null | tail -1 || echo "markdownlint unavailable - skipped"
+      git diff -- README.md | grep '^+' | LC_ALL=C grep -c $'\xe2\x80\x94'; true
+      xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Debug -derivedDataPath /tmp/kc-dd build 2>&1 | tee /tmp/kc-build.log | tail -1
+      echo "warnings=$(grep -c ': warning: ' /tmp/kc-build.log || true)"
       ```
 
-      Expected: `1`, then `1`, then `0` (no em dash character in the added lines), then either a markdownlint summary with no errors or `markdownlint unavailable - skipped`.
+      Expected, exactly these five lines:
+
+      ```
+      1
+      1
+      0
+      ** BUILD SUCCEEDED **
+      warnings=0
+      ```
+
+      The third line is a count of the em dash character in the added README lines; the repo forbids it, so it must be `0`.
 
 - [ ] Step 4: Commit - `git add README.md && git commit -m "docs: explain the keychain password prompt and when it recurs"`
 
@@ -593,7 +609,7 @@ Do not soften that into "you will not be asked again".
 
 Run after all four tasks are committed.
 
-- [ ] Run: `git diff --stat 78075e1..HEAD` - Expected: exactly two files changed, `Remaindr/Remaindr/Keychain/KeychainStore.swift` and `README.md`, plus this plan file.
+- [ ] Run: `git diff --name-only HEAD~4..HEAD` - Expected: exactly two paths, `README.md` and `Remaindr/Remaindr/Keychain/KeychainStore.swift`. Anchored on this plan's own four commits rather than on the base sha, because a concurrent plan may have landed commits in between.
 - [ ] Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Release -derivedDataPath /tmp/kc-dd-release build 2>&1 | tee /tmp/kc-release.log | tail -1; echo "warnings=$(grep -c ': warning: ' /tmp/kc-release.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
 - [ ] Run: `grep -c 'kSecReturnData' Remaindr/Remaindr/Keychain/KeychainStore.swift` - Expected: `1`. The whole file must request secret data from exactly one place, `readData(_:)`, which is what makes the cache the only door.
 - [ ] Run: `grep -n 'SecItemDelete' Remaindr/Remaindr/Keychain/KeychainStore.swift` - Expected: exactly one hit, inside `remove(_:)`. `set(_:for:)` must no longer delete.
