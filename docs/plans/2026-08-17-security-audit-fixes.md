@@ -414,7 +414,7 @@ Fixes F-05.
 - `Remaindr/Remaindr/Providers/ClaudeSessionBlocks.swift` ~12,~79
 - `Remaindr/Remaindr/Providers/ClaudeProvider.swift` ~20,~88,~94
 
-- [ ] Step 1: In `ClaudeSessionBlocks.swift`, replace the `totalTokens` property of `ClaudeUsageEntry` (lines 12-14 at base):
+- [x] Step 1: In `ClaudeSessionBlocks.swift`, replace the `totalTokens` property of `ClaudeUsageEntry` (lines 12-14 at base):
 
       ```swift
       var totalTokens: Int {
@@ -438,7 +438,7 @@ Fixes F-05.
       }
       ```
 
-- [ ] Step 2: In `ClaudeSessionBlocks.swift`, inside `blocks(from:)` (line 79 at base), replace:
+- [x] Step 2: In `ClaudeSessionBlocks.swift`, inside `blocks(from:)` (line 79 at base), replace:
 
       ```swift
       total += entry.totalTokens
@@ -461,7 +461,7 @@ Fixes F-05.
       continue
       ```
 
-- [ ] Step 3: In `ClaudeProvider.swift`, add the cap constant inside `struct ClaudeProvider` below the `allowBilledProbe` property (line 20 at base):
+- [x] Step 3: In `ClaudeProvider.swift`, add the cap constant inside `struct ClaudeProvider` below the `allowBilledProbe` property (line 20 at base):
 
       ```swift
       /// Session files larger than this are skipped: the scan reads whole files
@@ -478,7 +478,7 @@ Fixes F-05.
           guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
       ```
 
-- [ ] Step 4: Verify - Run:
+- [x] Step 4: Verify - Run:
 
       ```bash
       mkdir -p /tmp/fix-ov && cat > /tmp/fix-ov/main.swift <<'EOF'
@@ -538,7 +538,7 @@ Fixes F-05.
       CAP_SKIPS_BIG=true
       ```
 
-- [ ] Step 5: Verify - Run:
+- [x] Step 5: Verify - Run:
 
       ```bash
       cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr
@@ -548,10 +548,11 @@ Fixes F-05.
 
       Expected: `** BUILD SUCCEEDED **`, then `0`.
 
-- [ ] Step 6: Commit - `git add Remaindr/Remaindr/Providers/ClaudeSessionBlocks.swift Remaindr/Remaindr/Providers/ClaudeProvider.swift docs/plans/2026-08-17-security-audit-fixes.md && git commit -m "fix(security): cap session file size and saturate token totals instead of trapping"`
+- [x] Step 6: Commit - `git add Remaindr/Remaindr/Providers/ClaudeSessionBlocks.swift Remaindr/Remaindr/Providers/ClaudeProvider.swift docs/plans/2026-08-17-security-audit-fixes.md && git commit -m "fix(security): cap session file size and saturate token totals instead of trapping"`
 
 ---
 
+> Deviation: two plan defects surfaced and were corrected. (1) The reference code for Step 2 carried wrong indentation for the two continuation lines inside `blocks(from:)` (the real file indents them three spaces); the edit was re-anchored on the actual text. (2) The Step 4 harness miscounted its own arithmetic: `Int.max / 2 + Int.max / 2` is `Int.max - 1` without overflow, so `ENTRY_SATURATED` needed a third addend (`cacheReadTokens: 8`) to force saturation and `BLOCK_SATURATED` must expect `Int.max - 1` (the first entry saturates the block total; the second is skipped). Both corrected assertions pass; the code's own behavior never changed.
 ### Task 5: Pin TLS certificates on the three provider endpoints
 
 Fixes F-06. Four files, one atomic change: the delegate, its error surface, and the wiring, committed together because every intermediate split would leave a half-connected pinning layer.
