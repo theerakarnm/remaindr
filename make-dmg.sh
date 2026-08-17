@@ -15,6 +15,9 @@ SCHEME="Remaindr"
 CONFIG="Release"
 DERIVED="build/DerivedData"
 DIST="build/dmg-staging"
+LAYOUT_DIR=$(mktemp -d "${TMPDIR:-/tmp}/remaindr-dmg.XXXXXX")
+trap 'rm -rf "$LAYOUT_DIR"' EXIT
+LAYOUT_SCRIPT="$LAYOUT_DIR/layout.applescript"
 
 # 1. Build the app (must succeed with zero warnings - CI-style)
 xcodebuild -project "$APP_NAME/$APP_NAME.xcodeproj" \
@@ -27,6 +30,29 @@ APP_PATH="$DERIVED/Build/Products/$CONFIG/$APP_NAME.app"
 VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP_PATH/Contents/Info.plist")
 DMG="build/$APP_NAME-$VERSION.dmg"
 
+# 1b. Re-sign with the app's real entitlements.
+#     Xcode's "Sign to Run Locally" fallback stamps the debug entitlement
+#     com.apple.security.get-task-allow into Release builds, which leaves the
+#     shipped binary attachable by a debugger. Re-signing with the explicit
+#     entitlements file removes it. With a Developer ID identity present the
+#     same re-sign produces a distributable signature.
+ENTITLEMENTS="$APP_NAME/$APP_NAME/Remaindr.entitlements"
+IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | awk '/Developer ID Application/ {print $2; exit}')
+if [ -n "$IDENTITY" ]; then
+  codesign --force --deep --options runtime --timestamp \
+           --entitlements "$ENTITLEMENTS" --sign "$IDENTITY" "$APP_PATH"
+else
+  echo "WARNING: no Developer ID identity found; re-signing ad-hoc (not notarized)." >&2
+  codesign --force --sign - --options runtime \
+           --entitlements "$ENTITLEMENTS" "$APP_PATH"
+fi
+
+# 1c. Refuse to ship any build that still carries the debug entitlement.
+if codesign -d --entitlements - "$APP_PATH" 2>/dev/null | grep -q get-task-allow; then
+  echo "ERROR: $APP_PATH still carries com.apple.security.get-task-allow; not shipping." >&2
+  exit 1
+fi
+
 # 2. Stage a clean folder: the .app + an /Applications shortcut
 rm -rf "$DIST" "$DMG"
 mkdir -p "$DIST"
@@ -38,7 +64,7 @@ BG="dmg-resources/background.png"
 if [ -f "$BG" ]; then
   mkdir -p "$DIST/.background"
   cp "$BG" "$DIST/.background/background.png"
-  cat > /tmp/dmg-applescript.txt <<'EOS'
+  cat > "$LAYOUT_SCRIPT" <<'EOS'
 on run
   tell application "Finder"
     tell disk "Remaindr"
@@ -68,10 +94,17 @@ hdiutil create -volname "$APP_NAME" \
                -format UDZO \
                "$DMG"
 
+# 4b. Notarize and staple when both a Developer ID identity and a stored
+#     notary profile exist. Store the profile once with:
+#       xcrun notarytool store-credentials NOTARY_PROFILE --apple-id <id> --team-id <team>
+if [ -n "$IDENTITY" ] && [ -n "${NOTARY_PROFILE:-}" ]; then
+  xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
+  xcrun stapler staple "$DMG"
+fi
+
 # 5. Apply the saved Finder layout to the final DMG
-if [ -f /tmp/dmg-applescript.txt ]; then
-  osascript /tmp/dmg-applescript.txt
-  rm -f /tmp/dmg-applescript.txt
+if [ -f "$LAYOUT_SCRIPT" ]; then
+  osascript "$LAYOUT_SCRIPT"
 fi
 
 echo ""

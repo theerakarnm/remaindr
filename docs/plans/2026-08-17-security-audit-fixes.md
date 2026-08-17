@@ -150,6 +150,7 @@ Fixes the project half of F-01: an explicit entitlements file, wired into both t
       Expected: `Remaindr/Remaindr/Remaindr.entitlements: OK`, then `2`, then `** BUILD SUCCEEDED **`, then `0`.
 
 - [x] Step 4: Commit - `git add Remaindr/Remaindr/Remaindr.entitlements Remaindr/Remaindr.xcodeproj/project.pbxproj docs/plans/2026-08-17-security-audit-fixes.md && git commit -m "fix(security): declare explicit app entitlements"`
+      > Deviation: the machine's auto-commit daemon committed these files as `0ceacbe` with its own message; content identical to the plan's step.
 
 ---
 
