@@ -345,7 +345,7 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
 **Rollback:** ordinary code change - `git revert` is the answer.
 
 **Steps:**
-- [ ] Step 1: In `Remaindr/Remaindr/Keychain/KeychainStore.swift`, insert the cache immediately above the `/// The only place an API key is ever read or written.` doc comment (~L8), so it sits between `KeychainError` and `KeychainStore`:
+- [x] Step 1: In `Remaindr/Remaindr/Keychain/KeychainStore.swift`, insert the cache immediately above the `/// The only place an API key is ever read or written.` doc comment (~L8), so it sits between `KeychainError` and `KeychainStore`:
 
       ```swift
       /// Process-wide cache of the secret material already read out of the Keychain.
@@ -387,7 +387,7 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
 
       ```
 
-- [ ] Step 2: In the same file, add the cache key helper and the single gated read directly after the closing brace of `query(_:)` (anchor: `private func query(_ account: String) -> [String: Any]`, ~L21-27 at base, shifted down by Step 1):
+- [x] Step 2: In the same file, add the cache key helper and the single gated read directly after the closing brace of `query(_:)` (anchor: `private func query(_ account: String) -> [String: Any]`, ~L21-27 at base, shifted down by Step 1):
 
       ```swift
 
@@ -409,7 +409,7 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
           }
       ```
 
-- [ ] Step 3: In the same file, route both readers (`value(for:)`, `foreignValue(service:)`) and both writers (`set(_:for:)`, `remove(_:)`) through the cache.
+- [x] Step 3: In the same file, route both readers (`value(for:)`, `foreignValue(service:)`) and both writers (`set(_:for:)`, `remove(_:)`) through the cache.
       Steps 1 and 2 pushed everything below them down by roughly fifty lines, so work from the anchors, not from the base line numbers.
 
       Replace the whole `value(for:)` member (anchor: `func value(for kind: ProviderKind) throws -> String?`, its `guard let account` through its closing brace, ~L45 at base) with:
@@ -458,7 +458,7 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
       In `remove(_:)`, insert the same call directly above `let status = SecItemDelete(query(account) as CFDictionary)` (~L61 at base).
       Both anchors are unique in the file; grep for them rather than counting lines.
 
-- [ ] Step 4: In `Remaindr/Remaindr/Providers/ClaudeAccountUsage.swift`, replace the line `        case 401, 403: throw ProviderError.unauthorized` (~L63) with:
+- [x] Step 4: In `Remaindr/Remaindr/Providers/ClaudeAccountUsage.swift`, replace the line `        case 401, 403: throw ProviderError.unauthorized` (~L63) with:
 
       ```swift
               case 401, 403:
@@ -472,7 +472,7 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
 
       `keychain` is already the first parameter of `fetch(keychain:session:)` and `credentialService` is the static on this type, so nothing else changes.
 
-- [ ] Step 5: Verify - Run (dedent the block to column 0 first; the `EOF` terminators must start at the beginning of their lines):
+- [x] Step 5: Verify - Run (dedent the block to column 0 first; the `EOF` terminators must start at the beginning of their lines):
 
       ```bash
       mkdir -p /tmp/kc-verify/cache /tmp/kc-verify/foreign
@@ -546,7 +546,7 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
       `afterInvalidate=probe-secret` would mean the escape hatch is not wired to the same cache key, which is the regression that would cost Claude its primary source after a token rotation.
       The second `swiftc` line compiles `ClaudeAccountUsage.swift` too, so a mistake in Step 4 shows up as `COMPILE_FAILED_foreign` rather than silently at the end.
 
-- [ ] Step 6: Commit - `git add Remaindr/Remaindr/Keychain/KeychainStore.swift Remaindr/Remaindr/Providers/ClaudeAccountUsage.swift && git commit -m "fix(keychain): read each secret at most once per launch"`
+- [x] Step 6: Commit - `git add Remaindr/Remaindr/Keychain/KeychainStore.swift Remaindr/Remaindr/Providers/ClaudeAccountUsage.swift && git commit -m "fix(keychain): read each secret at most once per launch"`
 
 ---
 

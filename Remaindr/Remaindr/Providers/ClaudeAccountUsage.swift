@@ -60,7 +60,13 @@ struct ClaudeAccountUsage: Sendable, Equatable {
         }
         switch http.statusCode {
         case 200: break
-        case 401, 403: throw ProviderError.unauthorized
+        case 401, 403:
+            // Claude Code rotates this token, and `foreignValue` caches for the lifetime
+            // of the process so it costs at most one Keychain prompt. Dropping the cached
+            // copy here is what keeps that cache from replaying a token the server has
+            // already rejected: the next refresh re-reads the blob instead.
+            keychain.invalidateForeign(service: credentialService)
+            throw ProviderError.unauthorized
         case 429:
             let retryAfter = http.value(forHTTPHeaderField: "retry-after").flatMap(TimeInterval.init)
             throw ProviderError.rateLimited(retryAfter: retryAfter)
