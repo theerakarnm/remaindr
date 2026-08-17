@@ -214,6 +214,9 @@ Establishing new convention: none. This plan reuses the `swiftc` harness precede
 - **The login keychain is unlocked.** Check: `security show-keychain-info ~/Library/Keychains/login.keychain-db 2>&1` - recorded: no `The specified keychain is not... locked` error. Needed by: every harness. A locked keychain raises an unlock dialog instead of the statuses the Expected blocks predict, which looks like a hang.
 - **No leftover verify items in the login keychain.** Check: `security find-generic-password -s com.theerakarn.Remaindr.verify >/dev/null 2>&1 && echo LEFTOVER || echo clean` - recorded: `clean`. Needed by: Tasks 1-3, whose harnesses seed and delete under that service. If it prints `LEFTOVER`, clear it with the Rollback command on Task 1 before starting.
 - **The staged app's cdhash, if the Diagnosis evidence is being re-checked.** Check: `codesign -dvvv build/dmg-staging/Remaindr.app 2>&1 | grep '^CDHash'` - it changes on every `make-dmg.sh` run, so the specific hash quoted in Diagnosis point 3 is illustrative only. Needed by: nothing in the tasks; recorded so the evidence is reproducible rather than mysterious.
+- **`log show` returns keychain-prompt records.** Check: `log show --last 12h --predicate 'subsystem == "com.apple.securityd"' --style ndjson | grep -c kcacl` - recorded: `97`. Needed by: the End-to-end prompt count. If it returns `0` on a machine that has definitely shown keychain dialogs, the log is redacted or rolled over and that verify passes vacuously; say so rather than ticking it.
+- **The user's refresh interval.** Check: `python3 -c "import json;print(json.load(open('$HOME/.remaindr'))['refreshIntervalMinutes'])" 2>/dev/null || echo 5` - recorded: `5` minutes (`Remaindr/Remaindr/Models/Preferences.swift:28-29` clamps it to 1...60 and defaults to 5). Needed by: the End-to-end prompt count and the first Human item, both of which say "two refresh intervals" and "three refresh intervals". At 30 minutes a 12-minute observation window proves nothing, so scale the sleep and the `log show --start` window to this value.
+- **README's existing em dash count.** Check: `LC_ALL=C grep -c $'\xe2\x80\x94' README.md` - recorded: `20`, all in prose this plan does not touch. Needed by: Task 4's Verify, which is why that check counts added lines rather than the file.
 - **The user's real keys may or may not be stored.** Check: `for a in zai deepseek anthropic; do security find-generic-password -s com.theerakarn.Remaindr -a $a >/dev/null 2>&1 && echo "$a present" || echo "$a absent"; done` - recorded: `zai present`, `deepseek present`, `anthropic absent`. Needed by: the End-to-end verification only. No task Expected depends on it; the task harnesses use the throwaway `.verify` service precisely so they do not.
 
 ## Execution
@@ -223,7 +226,8 @@ Establishing new convention: none. This plan reuses the `swiftc` harness precede
 
 **Merge order:** not applicable - one branch, tasks in order 1, 2, 3, 4.
 **Shared files:** `Remaindr/Remaindr/Keychain/KeychainStore.swift` is touched by Tasks 1, 2 and 3, which is why the plan is sequential. No barrel file, no schema, no dependency manifest, no migration directory, and no route registration exists in this project to contend over.
-**Worktree setup:** none. A single-track plan does not earn a `treehouse` worktree (the cost floor is 3 tasks or 5 files per track); work in the repo directory on the current branch. If `treehouse` is wanted anyway it is irrelevant here, and its absence blocks nothing.
+**Worktree setup:** none, and therefore no `--lease-holder` label. A single-track plan does not earn a `treehouse` worktree (the cost floor is 3 tasks or 5 files per track); work in the repo directory on the current branch. If `treehouse` is not installed that blocks nothing here.
+**Teardown:** no worktree to return. The only state to clean up is the harness tree and the throwaway keychain service, and the last item in `## End-to-end verification` does both.
 
 ---
 
@@ -323,7 +327,7 @@ Task 2 is the task that closes it, by making the repeat reads stop entirely. Lan
 
 **Files:**
 - Modify: `Remaindr/Remaindr/Keychain/KeychainStore.swift` (anchors: `/// The only place an API key is ever read or written.` ~L8, `private func query(_ account: String)` ~L21, `func value(for kind: ProviderKind)` ~L45, `func remove(_ kind: ProviderKind)` ~L59, `func foreignValue(service: String)` ~L88)
-- Modify: `Remaindr/Remaindr/Providers/ClaudeAccountUsage.swift` (anchor: `case 401, 403: throw ProviderError.unauthorized`, ~L61)
+- Modify: `Remaindr/Remaindr/Providers/ClaudeAccountUsage.swift` (anchor: `case 401, 403: throw ProviderError.unauthorized`, ~L63)
 - Harness (throwaway, written by Step 5, never committed): `/tmp/kc-verify/cache/main.swift`, `/tmp/kc-verify/foreign/main.swift`
 
 **Interfaces:**
@@ -452,7 +456,7 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
       In `remove(_:)`, insert the same call directly above `let status = SecItemDelete(query(account) as CFDictionary)` (~L61 at base).
       Both anchors are unique in the file; grep for them rather than counting lines.
 
-- [ ] Step 4: In `Remaindr/Remaindr/Providers/ClaudeAccountUsage.swift`, replace the line `        case 401, 403: throw ProviderError.unauthorized` (~L61) with:
+- [ ] Step 4: In `Remaindr/Remaindr/Providers/ClaudeAccountUsage.swift`, replace the line `        case 401, 403: throw ProviderError.unauthorized` (~L63) with:
 
       ```swift
               case 401, 403:
@@ -470,14 +474,18 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
 
       ```bash
       mkdir -p /tmp/kc-verify/cache /tmp/kc-verify/foreign
+      # Clear any item an older harness build left behind BEFORE compiling. The security
+      # CLI can delete it without a dialog; a recompiled harness could not, because its
+      # signature would no longer be the one that created it.
+      security delete-generic-password -s com.theerakarn.Remaindr.verify -a zai >/dev/null 2>&1; true
+      security delete-generic-password -s com.theerakarn.Remaindr.verify -a deepseek >/dev/null 2>&1; true
       cat > /tmp/kc-verify/cache/main.swift <<'EOF'
       import Foundation
       import Security
-      // One binary, so it owns the item and its first read succeeds. The item is then
-      // deleted behind the store's back: a cached value survives that, an uncached one
-      // does not, which is the difference this task introduces.
+      // One binary, so it owns the item it creates and its own reads succeed. Prompts are
+      // disabled all the same: nothing here may block on a modal dialog.
+      SecKeychainSetUserInteractionAllowed(false)
       let store = KeychainStore(service: "com.theerakarn.Remaindr.verify")
-      try? store.remove(.zai)
       try store.set("probe-secret", for: .zai)
       let first = try store.value(for: .zai) ?? "nil"
       let raw: [String: Any] = [
@@ -494,9 +502,9 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
       import Security
       // The foreign path caches the same way, so it needs an escape hatch: this is the
       // plumbing ClaudeAccountUsage uses when the server rejects the cached token.
+      SecKeychainSetUserInteractionAllowed(false)
       let svc = "com.theerakarn.Remaindr.verify"
       let store = KeychainStore(service: svc)
-      try? store.remove(.deepseek)
       try store.set("probe-secret", for: .deepseek)
       let first = ((try? store.foreignValue(service: svc)) ?? nil) ?? "nil"
       let raw: [String: Any] = [
@@ -586,7 +594,21 @@ Passing `kSecAttrAccessible` in the update dictionary is accepted by this keycha
 - [ ] Step 2: Verify - Run:
 
       ```bash
-      mkdir -p /tmp/kc-verify/save
+      mkdir -p /tmp/kc-verify/seed /tmp/kc-verify/save
+      security delete-generic-password -s com.theerakarn.Remaindr.verify -a deepseek >/dev/null 2>&1; true
+      # Rewritten here rather than reused from Task 1: /tmp is swept between sessions, and a
+      # missing seed harness would surface as COMPILE_FAILED_seed with no Step code to fix.
+      cat > /tmp/kc-verify/seed/main.swift <<'EOF'
+      import Foundation
+      let store = KeychainStore(service: "com.theerakarn.Remaindr.verify")
+      if CommandLine.arguments.contains("clean") {
+          try? store.remove(.deepseek)
+          print("SEED=cleaned")
+      } else {
+          try store.set("probe-secret", for: .deepseek)
+          print("SEED=wrote")
+      }
+      EOF
       cat > /tmp/kc-verify/save/main.swift <<'EOF'
       import Foundation
       import Security
@@ -671,7 +693,7 @@ Leave `README.md`'s Table of Contents (`README.md:9-25`) alone: it lists `##` he
       ```bash
       grep -c 'Why macOS asks for the keychain password' README.md
       grep -c 'macOS asks for your login keychain password' README.md
-      git diff -- README.md | grep '^+' | LC_ALL=C grep -c $'\xe2\x80\x94'; true
+      git diff HEAD -- README.md | grep '^+' | LC_ALL=C grep -c $'\xe2\x80\x94'; true
       xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Debug -derivedDataPath /tmp/kc-dd build 2>&1 | tee /tmp/kc-build.log | tail -1
       echo "warnings=$(grep -c ': warning: ' /tmp/kc-build.log || true)"
       ```
@@ -686,7 +708,7 @@ Leave `README.md`'s Table of Contents (`README.md:9-25`) alone: it lists `##` he
       warnings=0
       ```
 
-      The third line counts the em dash character in the added README lines; the repo forbids it, so it must be `0`.
+      The third line counts the em dash character in the added README lines; the repo forbids it, so it must be `0`. `git diff HEAD` rather than `git diff`, so the check still fires after `git add`. README already contains 20 em dashes in pre-existing prose, which is why this counts added lines only and not the whole file.
 
 - [ ] Step 4: Commit - `git add README.md && git commit -m "docs: explain the keychain password prompt and when it recurs"`
 
@@ -699,15 +721,27 @@ Leave `README.md`'s Table of Contents (`README.md:9-25`) alone: it lists `##` he
 
 ## End-to-end verification
 
-Run after all four tasks are committed.
+Run after all four tasks are committed, from the repo root.
+`INTERVAL` below is the refresh interval Preflight recorded (5 minutes on this machine); scale every wait to it.
 
 - [ ] Run: `git log --format='%h' --grep='^fix(keychain)' --grep='^docs: explain the keychain' -4 | xargs -n1 git show --name-only --format='' | sort -u | grep -v '^$'` - Expected: exactly three paths, `README.md`, `Remaindr/Remaindr/Keychain/KeychainStore.swift`, and `Remaindr/Remaindr/Providers/ClaudeAccountUsage.swift`. Matched on this plan's own commit subjects rather than on `HEAD~4`, because a concurrent agent may have interleaved commits.
 - [ ] Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Release -derivedDataPath /tmp/kc-dd-release build 2>&1 | tee /tmp/kc-release.log | tail -1; echo "warnings=$(grep -c ': warning: ' /tmp/kc-release.log || true)"` - Expected: `** BUILD SUCCEEDED **` then `warnings=0`.
 - [ ] Run: `grep -c 'kSecReturnData' Remaindr/Remaindr/Keychain/KeychainStore.swift` - Expected: `1`. The whole file must request secret data from exactly one place, `readData(_:)`, which is what makes the cache the only door.
 - [ ] Run: `grep -c 'SecItemDelete(' Remaindr/Remaindr/Keychain/KeychainStore.swift` - Expected: `1`, the single call inside `remove(_:)`. `set(_:for:)` must no longer delete. The trailing `(` keeps the prose in Task 3's comment from being counted.
-- [ ] Manual: count the keychain prompts macOS actually raised for this app, from the system log rather than by eye. Launch the Release build with `open /tmp/kc-dd-release/Build/Products/Release/Remaindr.app`, leave it for two refresh intervals, then run `log show --last 12m --predicate 'subsystem == "com.apple.securityd"' --style ndjson | grep kcacl | grep -c Remaindr` - Expected: at most 3 on the first launch of a given build (the z.ai item, the DeepSeek item, and Claude Code's credential), and 0 on a second launch of that same build once each was answered with "Always Allow". Before this plan the same window produced one prompt per item per refresh cycle. Every prompt line is `action:24` (`CSSM_ACL_AUTHORIZATION_DECRYPT`); an `action:65538` line is the "Always Allow" partition write and does not count.
+- [ ] Manual: count the keychain prompts macOS actually raised for this app on the FIRST launch of this build, from the system log rather than by eye:
+
+      ```bash
+      START=$(date '+%Y-%m-%d %H:%M:%S')
+      open /tmp/kc-dd-release/Build/Products/Release/Remaindr.app
+      sleep 660   # two 5-minute refresh intervals plus slack; scale to INTERVAL
+      log show --start "$START" --predicate 'subsystem == "com.apple.securityd"' --style ndjson \
+        | grep kcacl | grep 'action:24' | grep -c Remaindr
+      ```
+
+      Expected: at most `3` - the z.ai item, the DeepSeek item, and Claude Code's credential, once each. Before this plan the same window produced one prompt per item per refresh cycle, so five or more. The `action:24` filter is load-bearing: it selects `CSSM_ACL_AUTHORIZATION_DECRYPT` and excludes the `action:65538` partition writes that answering "Always Allow" generates, which would otherwise push the count past 3 precisely when the fix is working. If the user has not yet answered any prompt for this build with "Always Allow", 1 to 3 is the pass; the "no prompts at all" case belongs to the next item.
+- [ ] Manual: repeat the block above WITHOUT quitting the app in between - relaunch it a second time after every prompt has been answered "Always Allow", with a fresh `START` - Expected: `0`. A non-zero count on the second launch of the same build means a grant is not sticking, which is the ad-hoc signing limitation in Preflight, not a defect in this plan; report it rather than treating it as a failure.
 - [ ] Manual: `for a in zai deepseek; do security find-generic-password -s com.theerakarn.Remaindr -a $a >/dev/null 2>&1 && echo "$a present" || echo "$a absent"; done` - Expected: whatever the Preflight run recorded, unchanged. Nothing in this plan may delete or recreate the user's real items.
-- [ ] Run: `rm -rf /tmp/kc-verify /tmp/kc-dd /tmp/kc-dd-release /tmp/kc-build.log /tmp/kc-release.log; security find-generic-password -s com.theerakarn.Remaindr.verify >/dev/null 2>&1 && echo LEFTOVER || echo clean` - Expected: `clean`. Teardown of the harness tree and proof the throwaway keychain service is gone.
-- [ ] 👤 Human: leave the app running for at least three refresh intervals (15 minutes at the default `refreshIntervalMinutes = 5`), answering the first prompt for each item with **Always Allow** - Expected: no further keychain password dialog appears after the first cycle, for the whole session. Proxy: the `CACHE first=probe-secret deleted=0 second=probe-secret` assertion in Task 2 proves the second and later reads never reach the Keychain, which is everything except the dialog itself.
-- [ ] 👤 Human: open Settings from the menu bar item and look at the z.ai row - Expected: the green "Set" badge, not "Not set", for a key that Preflight recorded as present. Proxy: the `PRESENCE=true` assertion in Task 1 proves `hasKey` now answers truthfully for an item this build cannot read; only the badge rendering is unverified. This one is Human because Remaindr is a `MenuBarExtra` `LSUIElement` app with no URL and no window an agent can drive.
-- [ ] 👤 Human: in Settings, paste a new z.ai key over the existing one and press Save - Expected: no error message and the green "Set" badge stays. Proxy: the `SAVE=ok` assertion in Task 3 proves the same write path succeeds from a signature the item does not know, which is the case that used to throw `errSecDuplicateItem`.
+- [ ] 👤 Human: leave the app running for at least three refresh intervals (15 minutes at the recorded `refreshIntervalMinutes = 5`), answering the first prompt for each item with **Always Allow** - Expected: no further keychain password dialog appears after the first cycle, for the whole session. Proxy: the `CACHE first=probe-secret deleted=0 second=probe-secret` assertion in Task 2 proves the second and later reads never reach the Keychain, which is everything except the dialog itself.
+- [ ] 👤 Human: open Settings from the menu bar item and look at the z.ai row - Expected: the green "Set" badge, not "Not set", for a key Preflight recorded as present. Proxy: the `PRESENCE=true` assertion in Task 1 proves `hasKey` now answers truthfully for an item this build cannot read; only the badge rendering is unverified. This one is Human because Remaindr is a `MenuBarExtra` `LSUIElement` app with no URL and no window an agent can drive.
+- [ ] 👤 Human: in Settings, paste your EXISTING z.ai key back into the field - the same value, not a new one - and press Save - Expected: no error message and the green "Set" badge stays. Re-saving the same value is deliberate: it exercises the write path without changing what is stored, so a mistake here cannot cost you a key you would have to go and fetch again. Proxy: the `SAVE=ok` assertion in Task 3 proves the same write path succeeds from a signature the item does not know, which is the case that used to throw `errSecDuplicateItem`.
+- [ ] Run (last, after every item above): `rm -rf /tmp/kc-verify /tmp/kc-dd /tmp/kc-dd-release /tmp/kc-build.log /tmp/kc-release.log; security find-generic-password -s com.theerakarn.Remaindr.verify >/dev/null 2>&1 && echo LEFTOVER || echo clean` - Expected: `clean`. Teardown of the harness tree and proof the throwaway keychain service is gone. It runs last because the three Human items and the two prompt counts need the Release build in `/tmp/kc-dd-release`.
