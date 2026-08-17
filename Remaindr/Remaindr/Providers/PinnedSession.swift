@@ -24,7 +24,7 @@ enum PinnedSession {
         ],
         "api.z.ai": [
             "vCXiRElVzr29slyOBUtRUb0N3KrSPNNjWEEgfEHoUHA=", // leaf CN=*.z.ai
-            "jFTDNLZrpOQmdyr0o/kTbBmhrscp/bKMU1wHpaTvIuA=", // CA Sectigo Public Server Authentication CA DV
+            "jFTDNLZrpOQmdyr0o/kTbBmhrscp/bKMU1wHpaTvIuA=", // CA Sectigo Public Server Authentication CA DV R36
         ],
         "api.deepseek.com": [
             "CxEkdgkFfa14FpGFLwGuLqUsnEfNYykPMvhculJbR10=", // leaf CN=*.deepseek.com

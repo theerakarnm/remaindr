@@ -43,8 +43,13 @@ struct ClaudeProvider: UsageProvider {
         // The account endpoint is the only source that knows the real plan limits, so it
         // goes first. Every way it can fail (no signed-in credential, offline, expired
         // token, server hiccup) means "fall through to the next source", not "error out".
-        if let status = try? await accountUsageStatus(now: now) {
-            return status
+        // An untrusted server is the exception: surfacing it is the only way a pin
+        // failure becomes visible instead of silently downgrading to the local estimate.
+        do {
+            return try await accountUsageStatus(now: now)
+        } catch ProviderError.untrustedServer {
+            throw ProviderError.untrustedServer
+        } catch {
         }
 
         let directory = projectsDirectory
@@ -95,8 +100,8 @@ struct ClaudeProvider: UsageProvider {
 
         var entries: [ClaudeUsageEntry] = []
         for case let url as URL in walker where url.pathExtension == "jsonl" {
-            let size = (try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
-            guard size <= Self.maxSessionFileBytes else { continue }
+            guard let size = try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+                  size <= Self.maxSessionFileBytes else { continue }
             guard let text = try? String(contentsOf: url, encoding: .utf8) else { continue }
             for line in text.split(separator: "\n", omittingEmptySubsequences: true) {
                 if let entry = ClaudeSessionBlocks.entry(fromLine: String(line)) {

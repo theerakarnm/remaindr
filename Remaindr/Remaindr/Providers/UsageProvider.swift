@@ -21,9 +21,9 @@ extension UsageProvider {
              .dataNotAllowed, .secureConnectionFailed:
             return ProviderError.offline
         case .cancelled:
-            // The pinning delegate is the only code path that cancels a challenge;
-            // no provider cancels its own requests.
-            return ProviderError.untrustedServer
+            // The pinning delegate cancels a challenge it cannot trust. A cancelled
+            // task is the scheduler rescheduling mid-refresh, not a pin failure.
+            return Task.isCancelled ? error : ProviderError.untrustedServer
         default:
             return error
         }
