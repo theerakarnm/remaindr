@@ -87,14 +87,27 @@ struct KeychainStore: Sendable {
             return
         }
         SecretCache.shared.invalidate(cacheKey(account))
-        // SecItemAdd returns errSecDuplicateItem for an existing account, so replace.
-        SecItemDelete(query(account) as CFDictionary)
+        let data = Data(trimmed.utf8)
+        // Update in place when the item already exists. The previous delete-then-add
+        // cycle threw the item's ACL and partition list away along with the item, so
+        // every save re-authorised the app from scratch - and once the running build's
+        // signature no longer matched the item, SecItemDelete was itself gated and
+        // SecItemAdd then failed with errSecDuplicateItem, surfacing as "Could not save
+        // the key to the Keychain." SecItemUpdate needs no authorisation and copies the
+        // existing ACL forward. Measured: update returns errSecSuccess where delete
+        // returns -25244 from a signature the item does not know.
+        var updates: [String: Any] = [kSecValueData as String: data]
+        updates[kSecAttrAccessible as String] = Self.accessibility
+        let updateStatus = SecItemUpdate(query(account) as CFDictionary, updates as CFDictionary)
+        if updateStatus == errSecSuccess { return }
+        guard updateStatus == errSecItemNotFound else {
+            throw KeychainError.unexpectedStatus(updateStatus)
+        }
         var attributes = query(account)
-        attributes[kSecValueData as String] = Data(trimmed.utf8)
+        attributes[kSecValueData as String] = data
         attributes[kSecAttrAccessible as String] = Self.accessibility
         let status = SecItemAdd(attributes as CFDictionary, nil)
-        guard status == errSecSuccess else { throw KeychainError.unexpectedStatus(status) }
-    }
+        guard status == errSecSuccess else { throw KeychainError.unexpectedStatus(status) }    }
 
     /// Reads the stored key, at most once per process. See `SecretCache`.
     func value(for kind: ProviderKind) throws -> String? {

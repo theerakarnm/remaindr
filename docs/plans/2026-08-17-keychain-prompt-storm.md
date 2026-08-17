@@ -567,7 +567,7 @@ Passing `kSecAttrAccessible` in the update dictionary is accepted by this keycha
 **Rollback:** ordinary code change - `git revert` is the answer. The task writes only to `com.theerakarn.Remaindr.verify`, cleaned up by its own Verify.
 
 **Steps:**
-- [ ] Step 1: In `Remaindr/Remaindr/Keychain/KeychainStore.swift`, replace the tail of `set(_:for:)` - from the `// SecItemAdd returns errSecDuplicateItem for an existing account, so replace.` comment through the `guard status == errSecSuccess else { throw KeychainError.unexpectedStatus(status) }` line, which is everything after the `SecretCache.shared.invalidate(cacheKey(account))` call Task 2 added - with:
+- [x] Step 1: In `Remaindr/Remaindr/Keychain/KeychainStore.swift`, replace the tail of `set(_:for:)` - from the `// SecItemAdd returns errSecDuplicateItem for an existing account, so replace.` comment through the `guard status == errSecSuccess else { throw KeychainError.unexpectedStatus(status) }` line, which is everything after the `SecretCache.shared.invalidate(cacheKey(account))` call Task 2 added - with:
 
       ```swift
               let data = Data(trimmed.utf8)
@@ -593,7 +593,7 @@ Passing `kSecAttrAccessible` in the update dictionary is accepted by this keycha
               guard status == errSecSuccess else { throw KeychainError.unexpectedStatus(status) }
       ```
 
-- [ ] Step 2: Verify - Run (dedent the block to column 0 first; the `EOF` terminators must start at the beginning of their lines):
+- [x] Step 2: Verify - Run (dedent the block to column 0 first; the `EOF` terminators must start at the beginning of their lines):
 
       ```bash
       mkdir -p /tmp/kc-verify/seed /tmp/kc-verify/save
@@ -646,7 +646,7 @@ Passing `kSecAttrAccessible` in the update dictionary is accepted by this keycha
 
       `SAVE=threw unexpectedStatus(-25299)` is the pre-change behaviour: the delete was refused and the add hit `errSecDuplicateItem`.
 
-- [ ] Step 3: Commit - `git add Remaindr/Remaindr/Keychain/KeychainStore.swift && git commit -m "fix(keychain): update items in place so a save keeps its access grant"`
+- [x] Step 3: Commit - `git add Remaindr/Remaindr/Keychain/KeychainStore.swift && git commit -m "fix(keychain): update items in place so a save keeps its access grant"`
 
 ---
 
