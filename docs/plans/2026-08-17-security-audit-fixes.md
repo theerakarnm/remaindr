@@ -89,7 +89,7 @@ Harness prints deterministic `KEY=value` lines; the Expected block lists them ex
 **PERISHABLE (re-run each before task 1):**
 - `git status --porcelain` prints nothing. Recorded while planning: clean.
 - Baseline Release build is green with zero warnings. Re-run:
-  `cd <repo> && xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Release -derivedDataPath build/DerivedData build 2>&1 | grep -c ': warning: '`
+  `cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr && xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Release -derivedDataPath build/DerivedData build 2>&1 | grep -c ': warning: '`
   Recorded: `0`, and the build printed `** BUILD SUCCEEDED **`.
 - No Developer ID signing identity exists. Re-run: `security find-identity -v -p codesigning`.
   Recorded: `0 valid identities found`.
@@ -111,7 +111,11 @@ Fixes the project half of F-01: an explicit entitlements file, wired into both t
 
 **Files:**
 - `Remaindr/Remaindr/Remaindr.entitlements` (new)
-- `Remaindr/Remaindr.xcodeproj/project.pbxproj`
+- `Remaindr/Remaindr.xcodeproj/project.pbxproj` ~164,~185 (the two `CODE_SIGN_STYLE = Automatic;` lines)
+
+**Interfaces:**
+      Consumes: nothing new.
+      Produces: `Remaindr/Remaindr/Remaindr.entitlements`, a valid empty entitlements plist, referenced by `CODE_SIGN_ENTITLEMENTS` in both target configurations; consumed by Task 2's re-sign step.
 
 **Gotcha:** the project file sits at `Remaindr/Remaindr.xcodeproj`, so build-setting paths are relative to `Remaindr/`: the file is stored at `Remaindr/Remaindr/Remaindr.entitlements` and referenced as `Remaindr/Remaindr.entitlements`. This was probed in a scratch worktree during planning and the build succeeded.
 
@@ -136,7 +140,7 @@ Fixes the project half of F-01: an explicit entitlements file, wired into both t
 - [ ] Step 3: Verify - Run:
 
       ```bash
-      cd <repo>
+      cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr
       plutil -lint Remaindr/Remaindr/Remaindr.entitlements
       grep -c 'CODE_SIGN_ENTITLEMENTS = Remaindr/Remaindr.entitlements;' Remaindr/Remaindr.xcodeproj/project.pbxproj
       xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Release -derivedDataPath build/DerivedData build 2>&1 | tee /tmp/fix-build.log | tail -2
@@ -154,8 +158,12 @@ Fixes the project half of F-01: an explicit entitlements file, wired into both t
 Fixes the shipping half of F-01, all of F-02, and all of F-04.
 
 **Files:**
-- `make-dmg.sh`
-- `README.md`
+- `make-dmg.sh` ~28,~41,~72
+- `README.md` ~70
+
+**Interfaces:**
+      Consumes: `Remaindr/Remaindr/Remaindr.entitlements` from Task 1, referenced from the script's working directory as `Remaindr/Remaindr.entitlements`.
+      Produces: nothing other code consumes; produces a shipped `.app` and `.dmg` whose entitlements contain no `get-task-allow`.
 
 **Gotcha:** verified during planning - with no signing identity, Xcode stamps `com.apple.security.get-task-allow` into Release builds even when `CODE_SIGN_ENTITLEMENTS` is set, and only a re-sign removes it:
 `codesign --force --sign - --options runtime --entitlements Remaindr/Remaindr/Remaindr.entitlements <app>` leaves `Signature=adhoc`, `flags=0x10002(adhoc,runtime)`, empty entitlements, and passes `codesign --verify --strict`.
@@ -235,7 +243,7 @@ Fixes the shipping half of F-01, all of F-02, and all of F-04.
 - [ ] Step 5: Verify - Run:
 
       ```bash
-      cd <repo>
+      cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr
       bash -n make-dmg.sh && echo SYNTAX_OK
       grep -c 'Right-click' README.md || true
       grep -c 'mktemp -d' make-dmg.sh
@@ -247,7 +255,7 @@ Fixes the shipping half of F-01, all of F-02, and all of F-04.
 - [ ] Step 6: Verify - Run (the script's re-sign and assertion steps, executed directly against the Task 1 build):
 
       ```bash
-      cd <repo>
+      cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr
       codesign --force --sign - --options runtime \
         --entitlements Remaindr/Remaindr/Remaindr.entitlements \
         build/DerivedData/Build/Products/Release/Remaindr.app
@@ -266,9 +274,13 @@ Fixes the shipping half of F-01, all of F-02, and all of F-04.
 
 Fixes F-03. The accessibility class moves to `kSecAttrAccessibleWhenUnlockedThisDeviceOnly`, and items written by older builds under `kSecAttrAccessibleAfterFirstUnlock` are rewritten once at launch.
 
+**Interfaces:**
+      Consumes: `ProviderKind.keychainAccount` (`Remaindr/Remaindr/Models/ProviderStatus.swift:33-39`) and the existing `set(_:for:)` / `value(for:)` / `remove(_:)`.
+      Produces: `static let accessibility: String` and `func upgradeAccessibility() -> Void` on `KeychainStore`; called once from `RemaindrApp.init()`.
+
 **Files:**
-- `Remaindr/Remaindr/Keychain/KeychainStore.swift`
-- `Remaindr/Remaindr/App/RemaindrApp.swift`
+- `Remaindr/Remaindr/Keychain/KeychainStore.swift` ~11,~36,~61
+- `Remaindr/Remaindr/App/RemaindrApp.swift` ~10
 
 - [ ] Step 1: In `KeychainStore.swift`, add a static accessibility constant below the `service` property (line 11 at base):
 
@@ -360,7 +372,7 @@ Fixes F-03. The accessibility class moves to `kSecAttrAccessibleWhenUnlockedThis
       try store.remove(.deepseek)
       print("CLEANED=\(attributes() == nil)")
       EOF
-      cd <repo>
+      cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr
       swiftc -swift-version 6 \
         Remaindr/Remaindr/Models/ProviderStatus.swift \
         Remaindr/Remaindr/Keychain/KeychainStore.swift \
@@ -379,7 +391,7 @@ Fixes F-03. The accessibility class moves to `kSecAttrAccessibleWhenUnlockedThis
 - [ ] Step 5: Verify - Run:
 
       ```bash
-      cd <repo>
+      cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr
       xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Release -derivedDataPath build/DerivedData build 2>&1 | tee /tmp/fix-build.log | tail -1
       grep -c ': warning: ' /tmp/fix-build.log || true
       ```
@@ -395,8 +407,8 @@ Fixes F-03. The accessibility class moves to `kSecAttrAccessibleWhenUnlockedThis
 Fixes F-05.
 
 **Files:**
-- `Remaindr/Remaindr/Providers/ClaudeSessionBlocks.swift`
-- `Remaindr/Remaindr/Providers/ClaudeProvider.swift`
+- `Remaindr/Remaindr/Providers/ClaudeSessionBlocks.swift` ~12,~79
+- `Remaindr/Remaindr/Providers/ClaudeProvider.swift` ~20,~88,~94
 
 - [ ] Step 1: In `ClaudeSessionBlocks.swift`, replace the `totalTokens` property of `ClaudeUsageEntry` (lines 12-14 at base):
 
@@ -502,7 +514,7 @@ Fixes F-05.
       print("CAP_SKIPS_BIG=\(scanned.count == 1 && scanned[0].totalTokens == 42)")
       try? FileManager.default.removeItem(at: dir)
       EOF
-      cd <repo>
+      cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr
       swiftc -swift-version 6 \
         Remaindr/Remaindr/Models/ProviderStatus.swift \
         Remaindr/Remaindr/Providers/UsageProvider.swift \
@@ -525,7 +537,7 @@ Fixes F-05.
 - [ ] Step 5: Verify - Run:
 
       ```bash
-      cd <repo>
+      cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr
       xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Release -derivedDataPath build/DerivedData build 2>&1 | tee /tmp/fix-build.log | tail -1
       grep -c ': warning: ' /tmp/fix-build.log || true
       ```
@@ -542,9 +554,13 @@ Fixes F-06. Four files, one atomic change: the delegate, its error surface, and 
 
 **Files:**
 - `Remaindr/Remaindr/Providers/PinnedSession.swift` (new)
-- `Remaindr/Remaindr/Models/ProviderStatus.swift`
-- `Remaindr/Remaindr/Providers/UsageProvider.swift`
-- `Remaindr/Remaindr/UI/ProviderStore.swift`
+- `Remaindr/Remaindr/Models/ProviderStatus.swift` ~50,~61
+- `Remaindr/Remaindr/Providers/UsageProvider.swift` ~16
+- `Remaindr/Remaindr/UI/ProviderStore.swift` ~32
+
+**Interfaces:**
+      Consumes: `ClaudeProvider.init(keychain:session:projectsDirectory:allowBilledProbe:)`, `ZAIProvider.init(keychain:session:)`, and `DeepSeekProvider.init(keychain:session:)`, which already accept a `URLSession`; also `ProviderError` and `mapTransportFailure`.
+      Produces: `enum PinnedSession` with `static let shared: URLSession`, `static let pins: [String: [String]]`, `static func certificateHash(_ certificate: SecCertificate) -> String`, and `final class Delegate` with `init(pins: [String: [String]] = PinnedSession.pins)`; plus `ProviderError.untrustedServer`.
 
 **Gotcha:** pins are SHA-256 over the whole DER certificate, not over the SPKI, because `SecKeyCopyExternalRepresentation` returns the raw key without the SubjectPublicKeyInfo wrapper and no first-party API reconstructs it. Certificate pinning over the leaf plus issuing CA is the TrustKit `SSLPinMode.certificate` shape: a leaf renewal is covered by the CA pin, a CA change is a visible failure until the pins are refreshed.
 
@@ -704,7 +720,7 @@ Fixes F-06. Four files, one atomic change: the delegate, its error surface, and 
       }
       print("GARBAGE_PINS_CANCEL=\(await check(host: hosts[0], pins: [:]) == "CANCELLED")")
       EOF
-      cd <repo>
+      cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr
       swiftc -swift-version 6 \
         Remaindr/Remaindr/Models/ProviderStatus.swift \
         Remaindr/Remaindr/Providers/UsageProvider.swift \
@@ -725,7 +741,7 @@ Fixes F-06. Four files, one atomic change: the delegate, its error surface, and 
 - [ ] Step 6: Verify - Run:
 
       ```bash
-      cd <repo>
+      cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr
       xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Release -derivedDataPath build/DerivedData build 2>&1 | tee /tmp/fix-build.log | tail -1
       grep -c ': warning: ' /tmp/fix-build.log || true
       ```
@@ -738,8 +754,8 @@ Fixes F-06. Four files, one atomic change: the delegate, its error surface, and 
 
 ## End-to-end verification
 
-- [ ] Run: `cd <repo> && bash -n make-dmg.sh && echo SYNTAX_OK` - Expected: `SYNTAX_OK`.
-- [ ] Run: `cd <repo> && ./make-dmg.sh > /tmp/make-dmg.log 2>&1; echo rc=$?; tail -2 /tmp/make-dmg.log` - Expected: `rc=0` and `Created: build/Remaindr-1.0.dmg`.
+- [ ] Run: `cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr && bash -n make-dmg.sh && echo SYNTAX_OK` - Expected: `SYNTAX_OK`.
+- [ ] Run: `cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr && ./make-dmg.sh > /tmp/make-dmg.log 2>&1; echo rc=$?; tail -2 /tmp/make-dmg.log` - Expected: `rc=0` and `Created: build/Remaindr-1.0.dmg`.
   The script takes its no-background path (`dmg-resources/` does not exist), so no `osascript` runs and no Finder window appears.
 - [ ] Run: `codesign -d --entitlements - build/dmg-staging/Remaindr.app 2>/dev/null | grep -c get-task-allow || true` - Expected: `0`.
 - [ ] Run: `hdiutil verify build/Remaindr-1.0.dmg | tail -1` - Expected: a line ending `devrdisk image is valid` or equivalent `...verified`.
