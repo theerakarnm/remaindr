@@ -666,13 +666,13 @@ Leave `README.md`'s Table of Contents (`README.md:9-25`) alone: it lists `##` he
 **Rollback:** ordinary docs change - `git revert` is the answer.
 
 **Steps:**
-- [ ] Step 1: In `README.md`, add one row to the Troubleshooting table, directly after the `| Collapsed label missing | ... |` row:
+- [x] Step 1: In `README.md`, add one row to the Troubleshooting table, directly after the `| Collapsed label missing | ... |` row:
 
       ```markdown
       | macOS asks for your login keychain password | Expected once per key after installing or updating the app - see below |
       ```
 
-- [ ] Step 2: In `README.md`, add this subsection immediately after the Troubleshooting table and before `## Roadmap`:
+- [x] Step 2: In `README.md`, add this subsection immediately after the Troubleshooting table and before `## Roadmap`:
 
       ```markdown
       ### Why macOS asks for the keychain password
@@ -690,7 +690,7 @@ Leave `README.md`'s Table of Contents (`README.md:9-25`) alone: it lists `##` he
       If you are asked repeatedly *within a single run*, that is a bug - please open an issue.
       ```
 
-- [ ] Step 3: Verify - Run:
+- [x] Step 3: Verify - Run:
 
       ```bash
       grep -c 'Why macOS asks for the keychain password' README.md
@@ -712,7 +712,7 @@ Leave `README.md`'s Table of Contents (`README.md:9-25`) alone: it lists `##` he
 
       The third line counts the em dash character in the added README lines; the repo forbids it, so it must be `0`. `git diff HEAD` rather than `git diff`, so the check still fires after `git add`. README already contains 20 em dashes in pre-existing prose, which is why this counts added lines only and not the whole file.
 
-- [ ] Step 4: Commit - `git add README.md && git commit -m "docs: explain the keychain password prompt and when it recurs"`
+- [x] Step 4: Commit - `git add README.md && git commit -m "docs: explain the keychain password prompt and when it recurs"`
 
 ## Failure handling summary
 
