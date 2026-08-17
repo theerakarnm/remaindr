@@ -760,14 +760,15 @@ Fixes F-06. Four files, one atomic change: the delegate, its error surface, and 
 
 ## End-to-end verification
 
-- [ ] Run: `cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr && bash -n make-dmg.sh && echo SYNTAX_OK` - Expected: `SYNTAX_OK`.
-- [ ] Run: `cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr && ./make-dmg.sh > /tmp/make-dmg.log 2>&1; echo rc=$?; tail -2 /tmp/make-dmg.log` - Expected: `rc=0` and `Created: build/Remaindr-1.0.dmg`.
+- [x] Run: `cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr && bash -n make-dmg.sh && echo SYNTAX_OK` - Expected: `SYNTAX_OK`.
+- [x] Run: `cd /Users/jametirakarn/Desktop/Theerakarnm/remaindr && ./make-dmg.sh > /tmp/make-dmg.log 2>&1; echo rc=$?; tail -2 /tmp/make-dmg.log` - Expected: `rc=0` and `Created: build/Remaindr-1.0.dmg`.
   The script takes its no-background path (`dmg-resources/` does not exist), so no `osascript` runs and no Finder window appears.
-- [ ] Run: `codesign -d --entitlements - build/dmg-staging/Remaindr.app 2>/dev/null | grep -c get-task-allow || true` - Expected: `0`.
-- [ ] Run: `hdiutil verify build/Remaindr-1.0.dmg | tail -1` - Expected: a line ending `devrdisk image is valid` or equivalent `...verified`.
-- [ ] Run: `grep -c 'kSecAttrAccessibleAfterFirstUnlock' Remaindr/Remaindr/Keychain/KeychainStore.swift || true` - Expected: `1` (only inside `upgradeAccessibility`, never in `set`).
-- [ ] Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Debug -derivedDataPath build/DerivedData build 2>&1 | tail -1` - Expected: `** BUILD SUCCEEDED **` (Debug still builds with the entitlements wired).
-- [ ] Run: `git status --porcelain` - Expected: empty, or only untracked build artifacts.
+- [x] Run: `codesign -d --entitlements - build/dmg-staging/Remaindr.app 2>/dev/null | grep -c get-task-allow || true` - Expected: `0`.
+- [x] Run: `hdiutil verify build/Remaindr-1.0.dmg | tail -1` - Expected: a line ending `devrdisk image is valid` or equivalent `...verified`.
+- [x] Run: `grep -c 'kSecAttrAccessibleAfterFirstUnlock' Remaindr/Remaindr/Keychain/KeychainStore.swift || true` - Expected: `1` (only inside `upgradeAccessibility`, never in `set`).
+  > Deviation: actual count `0`. The Task 3 follow-up refinement (in-place `SecItemUpdate`) removed the last reference to the legacy class, so the strict class is now the only one in the file - a strictly stronger outcome than the plan's expectation.
+- [x] Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Debug -derivedDataPath build/DerivedData build 2>&1 | tail -1` - Expected: `** BUILD SUCCEEDED **` (Debug still builds with the entitlements wired).
+- [x] Run: `git status --porcelain` - Expected: empty, or only untracked build artifacts.
 - [ ] 👤 Verify - Human: with a Developer ID Application certificate in the keychain and `NOTARY_PROFILE` stored via `xcrun notarytool store-credentials`, run `NOTARY_PROFILE=<profile> ./make-dmg.sh` and confirm the printed log shows the identity re-sign, a notarytool submission accepted, and `stapler staple` succeeding, then check `spctl -a -vv build/Remaindr-1.0.dmg` reports accepted.
   Proxy: Task 2 Step 6 proves the re-sign plus assertion path end to end on the ad-hoc branch, `bash -n` proves the identity branch parses, and the branch is selected by the same `IDENTITY` test the human run exercises.
   > Awaiting human: no Developer ID certificate or notary profile exists on this machine (`security find-identity -v -p codesigning` prints `0 valid identities found`).
