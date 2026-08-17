@@ -7,6 +7,7 @@ struct RemaindrApp: App {
     @State private var scheduler: RefreshScheduler
 
     init() {
+        KeychainStore().upgradeAccessibility()
         let preferences = Preferences()
         let store = ProviderStore(preferences: preferences)
         let scheduler = RefreshScheduler(store: store, preferences: preferences)

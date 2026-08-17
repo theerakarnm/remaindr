@@ -14,6 +14,10 @@ struct KeychainStore: Sendable {
         self.service = service
     }
 
+    /// The strictest class that still allows unattended refresh: the item never
+    /// migrates to another device and is unavailable until the keychain unlocks.
+    static let accessibility = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+
     private func query(_ account: String) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,
@@ -33,7 +37,7 @@ struct KeychainStore: Sendable {
         SecItemDelete(query(account) as CFDictionary)
         var attributes = query(account)
         attributes[kSecValueData as String] = Data(trimmed.utf8)
-        attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        attributes[kSecAttrAccessible as String] = Self.accessibility
         let status = SecItemAdd(attributes as CFDictionary, nil)
         guard status == errSecSuccess else { throw KeychainError.unexpectedStatus(status) }
     }
@@ -57,6 +61,24 @@ struct KeychainStore: Sendable {
         let status = SecItemDelete(query(account) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw KeychainError.unexpectedStatus(status)
+        }
+    }
+
+    /// Rewrites this app's own items so items written by an older build pick up
+    /// the current accessibility class. Absent, empty, or already-current items
+    /// are left alone, and no other app's item is ever touched.
+    func upgradeAccessibility() {
+        for kind in ProviderKind.allCases {
+            guard let account = kind.keychainAccount else { continue }
+            guard let stored = try? value(for: kind), let stored, !stored.isEmpty else { continue }
+            var attributes = query(account)
+            attributes[kSecReturnAttributes as String] = true
+            var result: CFTypeRef?
+            guard SecItemCopyMatching(attributes as CFDictionary, &result) == errSecSuccess,
+                  let item = result as? [String: Any],
+                  (item[kSecAttrAccessible as String] as? String) != Self.accessibility
+            else { continue }
+            try? set(stored, for: kind)
         }
     }
 
