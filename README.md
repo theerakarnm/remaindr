@@ -159,7 +159,6 @@ against the identity instead and never re-ask; that is on the roadmap.
 
 If you are asked repeatedly *within a single run*, that is a bug - please open an issue.
 
-
 ## Roadmap
 
 - [ ] Notarized, signed release build

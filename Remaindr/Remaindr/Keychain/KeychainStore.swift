@@ -62,6 +62,7 @@ struct KeychainStore: Sendable {
             kSecAttrAccount as String: account,
         ]
     }
+
     private func cacheKey(_ account: String) -> String { "\(service)/\(account)" }
 
     /// The one place `kSecValueData` is requested. Every call is a possible Keychain
@@ -107,7 +108,8 @@ struct KeychainStore: Sendable {
         attributes[kSecValueData as String] = data
         attributes[kSecAttrAccessible as String] = Self.accessibility
         let status = SecItemAdd(attributes as CFDictionary, nil)
-        guard status == errSecSuccess else { throw KeychainError.unexpectedStatus(status) }    }
+        guard status == errSecSuccess else { throw KeychainError.unexpectedStatus(status) }
+    }
 
     /// Reads the stored key, at most once per process. See `SecretCache`.
     func value(for kind: ProviderKind) throws -> String? {
@@ -117,6 +119,7 @@ struct KeychainStore: Sendable {
             Self.readData(base)
         }
     }
+
     func remove(_ kind: ProviderKind) throws {
         guard let account = kind.keychainAccount else { return }
         SecretCache.shared.invalidate(cacheKey(account))
@@ -181,5 +184,4 @@ struct KeychainStore: Sendable {
     func invalidateForeign(service: String) {
         SecretCache.shared.invalidate("foreign/\(service)")
     }
-
 }
