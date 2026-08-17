@@ -187,7 +187,7 @@ swiftc -swift-version 6 AIUsageBar/AIUsageBar/Models/ProviderStatus.swift AIUsag
 ```
 
 The repo has no test target, so deterministic checks compile the real source files together with a throwaway `main.swift` and assert exact stdout.
-Three details this plan depends on: the harness file must be named `main.swift` (Swift only allows top-level statements in that filename), each harness needs its own directory so several can coexist, and the `-o` output must NOT be one of those directory paths or the linker fails with `errno=21 (Is a directory)`.
+Four details this plan depends on: the harness file must be named `main.swift` (Swift only allows top-level statements in that filename), each harness needs its own directory so several can coexist, the `-o` output must NOT be one of those directory paths or the linker fails with `errno=21 (Is a directory)`, and every `<<'EOF'` block must be **dedented to column 0 before it is run** - the six-space indentation below is markdown formatting, and a `bash` heredoc terminator that is not at the start of its line never terminates.
 
 ### Tests
 
@@ -272,7 +272,7 @@ Task 2 is the task that closes it, by making the repeat reads stop entirely. Lan
       }
       ```
 
-- [ ] Step 2: Verify - Run:
+- [ ] Step 2: Verify - Run (dedent the block to column 0 first; the `EOF` terminators must start at the beginning of their lines):
 
       ```bash
       rm -rf /tmp/kc-verify && mkdir -p /tmp/kc-verify/seed /tmp/kc-verify/check
@@ -470,7 +470,7 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
 
       `keychain` is already the first parameter of `fetch(keychain:session:)` and `credentialService` is the static on this type, so nothing else changes.
 
-- [ ] Step 5: Verify - Run:
+- [ ] Step 5: Verify - Run (dedent the block to column 0 first; the `EOF` terminators must start at the beginning of their lines):
 
       ```bash
       mkdir -p /tmp/kc-verify/cache /tmp/kc-verify/foreign
@@ -591,7 +591,7 @@ Passing `kSecAttrAccessible` in the update dictionary is accepted by this keycha
               guard status == errSecSuccess else { throw KeychainError.unexpectedStatus(status) }
       ```
 
-- [ ] Step 2: Verify - Run:
+- [ ] Step 2: Verify - Run (dedent the block to column 0 first; the `EOF` terminators must start at the beginning of their lines):
 
       ```bash
       mkdir -p /tmp/kc-verify/seed /tmp/kc-verify/save
@@ -715,7 +715,8 @@ Leave `README.md`'s Table of Contents (`README.md:9-25`) alone: it lists `##` he
 ## Failure handling summary
 
 - **A Verify prints a keychain status other than the Expected one (`-25293`, `-25299`, `-25244`, `-34018`, `-50`).** Detect: the harness line differs from the Expected block. Respond: do NOT relax the Expected. Re-run the Preflight leftover check, clear `com.theerakarn.Remaindr.verify` with the Task 1 Rollback command, and re-run once. If it still differs, STOP and report the exact status - the mechanism this plan is built on has changed.
-- **A harness hangs instead of printing.** Detect: no output and no prompt. Respond: two causes. Either the harness lost its `SecKeychainSetUserInteractionAllowed(false)` line, or the login keychain is locked and macOS is waiting behind an unlock dialog. Check the Preflight unlock entry first. Never answer a keychain dialog to make a Verify pass - granting the harness binary access destroys the test's meaning.
+- **A harness hangs instead of printing.** Detect: no output, or a modal dialog on screen. Respond: three causes, in the order to check them. (1) A `com.theerakarn.Remaindr.verify` item is left over from an older harness build, so the recompiled binary's signature is no longer the one that created it and its first touch is ACL-gated - clear it with the Task 1 Rollback command and re-run; every Verify already does this before compiling. (2) The harness lost its `SecKeychainSetUserInteractionAllowed(false)` line. (3) The login keychain is locked and macOS is waiting behind an unlock dialog - see the Preflight unlock entry. Never answer a keychain dialog to make a Verify pass; granting the harness binary access destroys the test's meaning.
+- **A heredoc block never returns and bash keeps reading input.** Detect: the shell sits at a continuation prompt after a `cat > ... <<'EOF'` line. Respond: the `EOF` terminator is still indented. Dedent the whole block to column 0 and re-run.
 - **A `COMPILE_FAILED_*` line appears.** Detect: the literal string in the output. Respond: re-run that one `swiftc` command without `2>/dev/null` to see the diagnostic, fix the Step's code, and re-run the whole Verify. Do not read the `xcodebuild` result below it as a pass.
 - **`Remaindr/Remaindr/Keychain/KeychainStore.swift` differs from md5 `1b663660a4588856f8ca3959714d40b4`.** Detect: the PERISHABLE Preflight check. Respond: re-read the file, confirm the concurrent security-audit plan is not mid-task in it, re-anchor the edits by symbol rather than line number, and note the drift on the task. If that plan still has unticked steps touching this file, STOP and ask.
 
