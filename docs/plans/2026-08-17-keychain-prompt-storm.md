@@ -466,7 +466,7 @@ The lock is held across the `read` closure on purpose: `ProviderStore.refreshAll
 
 **Interfaces:**
 - Consumes: `KeychainStore.accessibility` (`Remaindr/Remaindr/Keychain/KeychainStore.swift:19`), `private func query(_ account: String) -> [String: Any]`, `SecretCache.invalidate(_:)` from Task 2.
-- Produces: `func set(_ value: String, for kind: ProviderKind) throws` - signature unchanged, so `SettingsView.save` (`Remaindr/Remaindr/UI/SettingsView.swift:130`) and `upgradeAccessibility` (`Remaindr/Remaindr/Keychain/KeychainStore.swift:71-78`) need no edit.
+- Produces: `func set(_ value: String, for kind: ProviderKind) throws` - signature unchanged, so `SettingsView.save` (`Remaindr/Remaindr/UI/SettingsView.swift:130`) and `upgradeAccessibility` (`Remaindr/Remaindr/Keychain/KeychainStore.swift:67-78`) need no edit. `upgradeAccessibility` no longer calls `set(_:for:)` at the base commit, so this task cannot regress it.
 
 **Gotcha:** `SecItemUpdate`'s second argument carries only the attributes to change, never `kSecClass`, `kSecAttrService` or `kSecAttrAccount` - those stay in the query.
 Passing `kSecAttrAccessible` in the update dictionary is accepted by this keychain (measured: `errSecSuccess`) even though it stores nothing, so keep it for the day the app moves to the data protection keychain.
