@@ -367,7 +367,7 @@ Fixes F-03. The accessibility class moves to `kSecAttrAccessibleWhenUnlockedThis
         /tmp/fix-kc/main.swift -o /tmp/fix-kc/kc && /tmp/fix-kc/kc
       ```
 
-      Expected, exactly these five lines:
+      Expected, exactly these four lines:
 
       ```
       FRESH=true
@@ -375,8 +375,6 @@ Fixes F-03. The accessibility class moves to `kSecAttrAccessibleWhenUnlockedThis
       UPGRADED=true
       CLEANED=true
       ```
-
-      (The final `print` in the harness is the fourth line; the fifth line is the shell returning nothing further.)
 
 - [ ] Step 5: Verify - Run:
 
@@ -566,8 +564,8 @@ Fixes F-06. Four files, one atomic change: the delegate, its error surface, and 
       ///
       /// Refreshing the pins: capture the new chains with
       ///   echo | openssl s_client -connect <host>:443 -servername <host> -showcerts
-      /// then hash each PEM block's DER with
-      ///   openssl x509 -pubkey ... (see README "Refreshing certificate pins")
+      /// save each PEM block to its own file, then hash it with
+      ///   openssl x509 -outform DER -in cert.pem | openssl dgst -sha256 -binary | base64
       /// and replace the leaf entry; keep the CA entry when the CA is unchanged.
       enum PinnedSession {
           /// Base64 SHA-256 of each host's leaf and issuing CA certificates,
@@ -597,14 +595,6 @@ Fixes F-06. Four files, one atomic change: the delegate, its error surface, and 
           static func certificateHash(_ certificate: SecCertificate) -> String {
               let der = SecCertificateCopyData(certificate) as Data
               return Data(SHA256.hash(data: der)).base64EncodedString()
-          }
-
-          /// True when any certificate in `chain` hashes to a pin declared for
-          /// `host`. A host with no pins, or an empty pin set, never matches.
-          static func chainMatches(chain: [SecCertificate], host: String) -> Bool {
-              guard let hostPins = pins[host], !hostPins.isEmpty else { return false }
-              let hashes = Set(chain.map(certificateHash))
-              return !hostPins.isDisjoint(with: hashes)
           }
 
           /// The delegate that enforces the pins. Injectable pins exist so a
