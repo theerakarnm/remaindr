@@ -16,7 +16,7 @@ struct KeychainStore: Sendable {
 
     /// The strictest class that still allows unattended refresh: the item never
     /// migrates to another device and is unavailable until the keychain unlocks.
-    static let accessibility = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+    static let accessibility: String = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
 
     private func query(_ account: String) -> [String: Any] {
         [
