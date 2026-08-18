@@ -415,6 +415,7 @@ final class CollapsedLabelTextTests: XCTestCase {
         XCTAssertLessThanOrEqual(text.count, CollapsedLabelText.budget)
         XCTAssertTrue(text.hasSuffix("\u{2026}"))
     }
+}
 ```
 End the file with a trailing newline.
 
