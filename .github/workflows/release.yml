@@ -1,0 +1,144 @@
+name: Release
+
+# Publishing a release is fully automated: push a tag like v1.2.3 and this
+# workflow builds, signs, notarizes, staples, checksums, and publishes.
+# The version check below guarantees the tag names the version actually built.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      NOTARY_PROFILE: remaindr-notary
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          sw_vers
+
+      # Fail in seconds, before any secret touches the runner, if the tag does
+      # not name the version the project is about to build.
+      - name: Verify tag matches MARKETING_VERSION
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VERSION=$(sed -n 's/^.*MARKETING_VERSION = \([0-9][0-9.]*\);/\1/p' \
+            Remaindr/Remaindr.xcodeproj/project.pbxproj | head -n 1)
+          if [ -z "$VERSION" ]; then
+            echo "ERROR: could not read MARKETING_VERSION from the Xcode project." >&2
+            exit 1
+          fi
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "ERROR: tag $GITHUB_REF_NAME does not match MARKETING_VERSION $VERSION." >&2
+            echo "       Bump the version in the Xcode project, commit, then tag." >&2
+            exit 1
+          fi
+          echo "Releasing Remaindr $VERSION"
+
+      # Same gate as ci.yml: a release may not ship warnings or test failures.
+      - name: Build and test (warnings as errors)
+        run: >-
+          xcodebuild -project Remaindr/Remaindr.xcodeproj
+          -scheme Remaindr
+          -destination 'platform=macOS'
+          -derivedDataPath build/DerivedData
+          test
+          SWIFT_TREAT_WARNINGS_AS_ERRORS=YES
+
+      - name: Import signing identity
+        env:
+          P12_BASE64: ${{ secrets.MACOS_SIGNING_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.MACOS_SIGNING_P12_PASSWORD }}
+        run: |
+          set -euo pipefail
+          KEYCHAIN_PASSWORD=$(uuidgen)
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          CERT_PATH="$RUNNER_TEMP/DeveloperIDApplication.p12"
+
+          printf '%s' "$P12_BASE64" | base64 --decode -o "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" \
+            -k "$KEYCHAIN_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12
+          # Prepend (not replace) so the login keychain stays in the search
+          # list; $PREV is unquoted by intent so each path becomes one argument.
+          PREV=$(security list-keychain -d user | tr -d '"' | tr '\n' ' ')
+          security list-keychain -d user -s "$KEYCHAIN_PATH" $PREV
+          security set-key-partition-list -S apple-tool:,apple: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+      - name: Store notarytool credentials
+        env:
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_NOTARY_KEY_P8_BASE64 }}
+          ASC_KEY_ID: ${{ secrets.ASC_NOTARY_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_NOTARY_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s' "$ASC_KEY_P8_BASE64" | base64 --decode -o "$KEY_PATH"
+          # Validation is on by default: bad credentials fail here in seconds,
+          # not after a full build.
+          xcrun notarytool store-credentials "$NOTARY_PROFILE" \
+            --key "$KEY_PATH" \
+            --key-id "$ASC_KEY_ID" \
+            --issuer "$ASC_ISSUER_ID" \
+            --keychain "$RUNNER_TEMP/app-signing.keychain-db"
+          rm -f "$KEY_PATH"
+
+      # All signing, notarization, stapling, spctl assessment, and checksum
+      # logic lives in make-dmg.sh - one source of truth for local and CI.
+      - name: Build, notarize, staple, checksum
+        run: |
+          set -euo pipefail
+          REQUIRE_NOTARIZATION=1 ./make-dmg.sh
+
+      - name: Verify artifacts for this version exist
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          # The DMG name embeds CFBundleShortVersionString read from the built
+          # app, so this is the authoritative tag-to-artifact match, checked
+          # after the build rather than in the project file.
+          test -f "build/Remaindr-${TAG}.dmg"
+          test -f "build/Remaindr-${TAG}.dmg.sha256"
+          ls -l build/Remaindr-${TAG}.dmg build/Remaindr-${TAG}.dmg.sha256
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME#v}"
+          DMG="build/Remaindr-${TAG}.dmg"
+          SHA="build/Remaindr-${TAG}.dmg.sha256"
+          # A re-run after a partial failure may have created the release
+          # already; republish its assets rather than failing the re-run.
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" --clobber "$DMG" "$SHA"
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --title "Remaindr $TAG" \
+              --generate-notes \
+              "$DMG" "$SHA"
+          fi
+
+      - name: Clean up keychain
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" 2>/dev/null || true
