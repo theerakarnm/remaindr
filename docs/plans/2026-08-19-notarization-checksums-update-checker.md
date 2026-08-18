@@ -550,7 +550,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 
 **Steps:**
 
-- [ ] Step 1: Replace the three-line blockquote at ~L70-72 (from `> Early-development builds are not notarized.` through `> ... before opening it.`) with the following. Note this both removes the F-02 wording and adds the new subsection, so `## Setup` now follows the new subsection:
+- [x] Step 1: Replace the three-line blockquote at ~L70-72 (from `> Early-development builds are not notarized.` through `> ... before opening it.`) with the following. Note this both removes the F-02 wording and adds the new subsection, so `## Setup` now follows the new subsection:
       ~~~markdown
       > Release DMGs are signed with a Developer ID certificate, notarized by Apple, and carry a
       > stapled notarization ticket, so they open with an ordinary double-click. There is no
@@ -577,21 +577,21 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
       not the one that was published.
       Delete it and download again rather than opening it.
       ~~~
-- [ ] Step 2: Replace the second paragraph of "Why macOS asks for the keychain password" (~L155-158, the one beginning `A release of Remaindr is ad-hoc signed`) with:
+- [x] Step 2: Replace the second paragraph of "Why macOS asks for the keychain password" (~L155-158, the one beginning `A release of Remaindr is ad-hoc signed`) with:
       ```markdown
       A published release is signed with a stable Developer ID certificate, so macOS records the
       grant against that identity and updating to a newer release does not ask again.
       A build you compiled yourself is ad-hoc signed, which ties the grant to that exact binary, so
       every local rebuild asks once more per key.
       ```
-- [ ] Step 3: Reword the first Roadmap entry (~L164) from `- [ ] Notarized, signed release build` to:
+- [x] Step 3: Reword the first Roadmap entry (~L164) from `- [ ] Notarized, signed release build` to:
       ```markdown
       - [x] Notarized, stapled, checksummed release pipeline in `make-dmg.sh` - the first notarized *release* still needs a Developer ID certificate
       ```
-- [ ] Step 4: Verify - Run: `grep -ni "right-click\|not notarized\|bypass\|early-development" README.md; echo "grep_exit=$?"` - Expected: no matching lines, and `grep_exit=1` (grep's no-match status). The Gatekeeper-bypass and un-notarized wording that audit F-02 named is gone.
-- [ ] Step 5: Verify - Run: `grep -c "Verifying your download" README.md; grep -c "shasum -a 256 -c" README.md; grep -c "source=Notarized Developer ID" README.md` - Expected: `1`, `1`, `1`.
-- [ ] Step 6: Verify - Run: `grep -o "Remaindr-<version>\.dmg\.sha256" README.md | sort -u` - Expected: exactly the one string `Remaindr-<version>.dmg.sha256`, matching the filename Task 2's script emits.
-- [ ] Step 7: Commit - `git commit -m "docs: describe releases as notarized and document how to verify a download"`
+- [x] Step 4: Verify - Run: `grep -ni "right-click\|not notarized\|bypass\|early-development" README.md; echo "grep_exit=$?"` - Expected: no matching lines, and `grep_exit=1` (grep's no-match status). The Gatekeeper-bypass and un-notarized wording that audit F-02 named is gone.
+- [x] Step 5: Verify - Run: `grep -c "Verifying your download" README.md; grep -c "shasum -a 256 -c" README.md; grep -c "source=Notarized Developer ID" README.md` - Expected: `1`, `1`, `1`.
+- [x] Step 6: Verify - Run: `grep -o "Remaindr-<version>\.dmg\.sha256" README.md | sort -u` - Expected: exactly the one string `Remaindr-<version>.dmg.sha256`, matching the filename Task 2's script emits.
+- [x] Step 7: Commit - `git commit -m "docs: describe releases as notarized and document how to verify a download"`
 
 ---
 

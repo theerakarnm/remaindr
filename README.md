@@ -67,9 +67,30 @@ Claude has no public "remaining subscription quota" API, so its number is an est
 2. Move `Remaindr.app` to `/Applications`.
 3. Launch it — a new icon appears in your menu bar.
 
-> Early-development builds are not notarized.
-> Prefer building from source (below).
-> If you use a downloaded build, verify its SHA-256 against the checksum published with the release before opening it.
+> Release DMGs are signed with a Developer ID certificate, notarized by Apple, and carry a
+> stapled notarization ticket, so they open with an ordinary double-click. There is no
+> Gatekeeper workaround to perform and none is supported: if macOS refuses to open a
+> download, the artifact is wrong, not the warning. Verify it (below), then open an issue.
+>
+> A release that ships a `.sha256` sidecar came from this pipeline. The older `v1.0.0`
+> asset predates it and is neither notarized nor checksummed - build from source rather
+> than using it.
+
+### Verifying your download
+
+Every release publishes `Remaindr-<version>.dmg` together with `Remaindr-<version>.dmg.sha256`.
+Download both into the same folder, then:
+
+```bash
+shasum -a 256 -c Remaindr-<version>.dmg.sha256
+spctl --assess --type open --context context:primary-signature -vv Remaindr-<version>.dmg
+```
+
+The first command must print `Remaindr-<version>.dmg: OK`.
+The second must print `accepted` together with `source=Notarized Developer ID`.
+Anything else - a checksum mismatch, `rejected`, or a missing signature - means the file is
+not the one that was published.
+Delete it and download again rather than opening it.
 
 ## Setup
 
@@ -152,16 +173,16 @@ credential Claude Code already stores. macOS asks you to authorise each item the
 time a given build of the app reads it. Choose **Always Allow** and that build will not
 ask again.
 
-A release of Remaindr is ad-hoc signed, which means macOS records the grant against
-that exact build rather than against a developer identity. Installing a new version
-therefore asks once more per key. A Developer ID signed build would record the grant
-against the identity instead and never re-ask; that is on the roadmap.
+A published release is signed with a stable Developer ID certificate, so macOS records the
+grant against that identity and updating to a newer release does not ask again.
+A build you compiled yourself is ad-hoc signed, which ties the grant to that exact binary, so
+every local rebuild asks once more per key.
 
 If you are asked repeatedly *within a single run*, that is a bug - please open an issue.
 
 ## Roadmap
 
-- [ ] Notarized, signed release build
+- [x] Notarized, stapled, checksummed release pipeline in `make-dmg.sh` - the first notarized *release* still needs a Developer ID certificate
 - [ ] Additional providers (OpenAI, Gemini, etc.) via the existing `UsageProvider` protocol
 - [ ] Historical usage graph
 - [ ] Optional notifications when a provider crosses a usage threshold
