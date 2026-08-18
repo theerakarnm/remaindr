@@ -458,7 +458,7 @@ Do not add an actionlint step to the verify; actionlint is not installed locally
 
 **Steps:**
 
-- [ ] Step 1: Create `.github/workflows/ci.yml` with exactly this content:
+- [x] Step 1: Create `.github/workflows/ci.yml` with exactly this content:
 ```yaml
 name: CI
 
@@ -499,7 +499,7 @@ jobs:
           SWIFT_TREAT_WARNINGS_AS_ERRORS=YES
 ```
 
-- [ ] Step 2: Verify - Run (from repo root):
+- [x] Step 2: Verify - Run (from repo root):
 ```bash
 ruby -ryaml -e 'YAML.load_file(".github/workflows/ci.yml") or raise "empty"; puts "YAML parses"' && \
 test "$(grep -c "SWIFT_TREAT_WARNINGS_AS_ERRORS=YES" .github/workflows/ci.yml)" = "2" && \
@@ -508,7 +508,7 @@ grep -q "actions/checkout" .github/workflows/ci.yml
 ```
 Expected: prints "YAML parses"; the chained count test and both greps pass; the chained command exits 0.
 
-- [ ] Step 3: Commit - `git add .github/workflows/ci.yml && git commit -m "ci: build with zero warnings and run tests on every push"`
+- [x] Step 3: Commit - `git add .github/workflows/ci.yml && git commit -m "ci: build with zero warnings and run tests on every push"`
 
 #### Task 3: Push, watch the workflow run go green, merge
 

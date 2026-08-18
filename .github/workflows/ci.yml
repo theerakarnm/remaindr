@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          sw_vers
+      - name: Build (Release, warnings as errors)
+        run: >-
+          xcodebuild -project Remaindr/Remaindr.xcodeproj
+          -scheme Remaindr
+          -configuration Release
+          -destination 'platform=macOS'
+          -derivedDataPath build/DerivedData
+          build
+          SWIFT_TREAT_WARNINGS_AS_ERRORS=YES
+      - name: Test (warnings as errors)
+        run: >-
+          xcodebuild -project Remaindr/Remaindr.xcodeproj
+          -scheme Remaindr
+          -destination 'platform=macOS'
+          -derivedDataPath build/DerivedData
+          test
+          SWIFT_TREAT_WARNINGS_AS_ERRORS=YES
