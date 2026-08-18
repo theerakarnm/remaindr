@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     let preferences: Preferences
     let scheduler: RefreshScheduler
+    let updateStore: UpdateStore
 
     private let keychain = KeychainStore()
 
@@ -75,6 +76,17 @@ struct SettingsView: View {
                         launchAtLogin = LoginItem.isEnabled
                     }
                 ))
+                LabeledContent("Updates") {
+                    HStack {
+                        Text(UpdateStatusText.settings(status: updateStore.status,
+                                                       error: updateStore.error,
+                                                       isChecking: updateStore.isChecking))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Button("Check now") { Task { await updateStore.check() } }
+                            .disabled(updateStore.isChecking)
+                    }
+                }
                 if let message {
                     Text(message).font(.caption).foregroundStyle(.orange)
                 }

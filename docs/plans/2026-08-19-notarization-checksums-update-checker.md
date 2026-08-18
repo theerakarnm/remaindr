@@ -1197,11 +1197,11 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 
 **Steps:**
 
-- [ ] Step 1: In `RemaindrApp.swift`, add the state property after `scheduler`:
+- [x] Step 1: In `RemaindrApp.swift`, add the state property after `scheduler`:
       ```swift
           @State private var updateStore: UpdateStore
       ```
-- [ ] Step 2: In `RemaindrApp.init()`, construct it after the `scheduler` line and register it with the other three:
+- [x] Step 2: In `RemaindrApp.init()`, construct it after the `scheduler` line and register it with the other three:
       ```swift
               let updateStore = UpdateStore(preferences: preferences)
               _preferences = State(initialValue: preferences)
@@ -1209,7 +1209,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
               _scheduler = State(initialValue: scheduler)
               _updateStore = State(initialValue: updateStore)
       ```
-- [ ] Step 3: In `RemaindrApp.body`, pass the store to both scenes and extend the existing `.task`:
+- [x] Step 3: In `RemaindrApp.body`, pass the store to both scenes and extend the existing `.task`:
       ```swift
               MenuBarExtra {
                   DropdownPanel(store: store, updateStore: updateStore)
@@ -1226,7 +1226,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
                   SettingsView(preferences: preferences, scheduler: scheduler, updateStore: updateStore)
               }
       ```
-- [ ] Step 4: In `DropdownPanel.swift`, add the property and the conditional link. The property goes directly under `let store: ProviderStore`:
+- [x] Step 4: In `DropdownPanel.swift`, add the property and the conditional link. The property goes directly under `let store: ProviderStore`:
       ```swift
           let updateStore: UpdateStore
       ```
@@ -1241,7 +1241,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
                   }
                   HStack {
       ```
-- [ ] Step 5: In `SettingsView.swift`, add the property directly under `let scheduler: RefreshScheduler`:
+- [x] Step 5: In `SettingsView.swift`, add the property directly under `let scheduler: RefreshScheduler`:
       ```swift
           let updateStore: UpdateStore
       ```
@@ -1259,10 +1259,11 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
                       }
                   }
       ```
-- [ ] Step 6: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -20` - Expected: `** TEST SUCCEEDED **` and `Executed 27 tests, with 0 failures`, with zero warnings (warnings are errors here).
-- [ ] Step 7: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Release -destination 'platform=macOS' -derivedDataPath build/DerivedData build SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -5` - Expected: `** BUILD SUCCEEDED **`. Release uses `SWIFT_COMPILATION_MODE = wholemodule` (`project.pbxproj:229`), which surfaces cross-file diagnostics the Debug test build can miss.
-- [ ] Step 8: Verify - Run: `grep -rn '"Update available\|"Up to date\|"Checking' Remaindr/Remaindr/UI/ Remaindr/Remaindr/App/; echo "grep_exit=$?"` - Expected: no matching lines and `grep_exit=1`. Every user-visible update string lives in `UpdateStatusText`, so Task 7's tests really are the proxy for what the views render.
-- [ ] Step 9: Commit - `git commit -m "feat: surface the update check in the dropdown and Settings"`
+- [x] Step 6: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -20` - Expected: `** TEST SUCCEEDED **` and `Executed 27 tests, with 0 failures`, with zero warnings (warnings are errors here).
+- [x] Step 7: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Release -destination 'platform=macOS' -derivedDataPath build/DerivedData build SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -5` - Expected: `** BUILD SUCCEEDED **`. Release uses `SWIFT_COMPILATION_MODE = wholemodule` (`project.pbxproj:229`), which surfaces cross-file diagnostics the Debug test build can miss.
+- [x] Step 8: Verify - Run: `grep -rn '"Update available\|"Up to date\|"Checking' Remaindr/Remaindr/UI/ Remaindr/Remaindr/App/; echo "grep_exit=$?"` - Expected: no matching lines and `grep_exit=1`. Every user-visible update string lives in `UpdateStatusText`, so Task 7's tests really are the proxy for what the views render.
+- [x] Step 9: Commit - `git commit -m "feat: surface the update check in the dropdown and Settings"`
+  > Deviation: Step 5's `LabeledContent("Updates")` block is written at 18 spaces in the plan, but its insertion point inside `Section("General")` sits at 16 (the sibling `Toggle("Launch at login"` line). Re-indented by +4 so it matches the surrounding code. Whitespace only - no token changed. Step 4's DropdownPanel block needed no adjustment.
 
 ---
 

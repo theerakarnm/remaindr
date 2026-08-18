@@ -4,6 +4,7 @@ import SwiftUI
 /// the per-provider last-refreshed time.
 struct DropdownPanel: View {
     let store: ProviderStore
+    let updateStore: UpdateStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -11,6 +12,12 @@ struct DropdownPanel: View {
                 ProviderRow(kind: kind, slot: store.slots[kind] ?? ProviderSlot())
             }
             Divider()
+            if let line = UpdateStatusText.dropdown(available: updateStore.availableVersion) {
+                Link(destination: UpdateChecker.releasesPageURL) {
+                    Label(line, systemImage: "arrow.down.circle.fill")
+                }
+                .font(.caption)
+            }
             HStack {
                 Button("Refresh") { Task { await store.refreshAll() } }
                 Spacer()
