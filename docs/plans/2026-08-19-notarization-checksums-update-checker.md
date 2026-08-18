@@ -495,7 +495,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
       echo "Verify with: hdiutil verify $DMG"
       ```
 - [ ] Step 3: Verify - Run: `bash -n make-dmg.sh && echo SYNTAX_OK` - Expected: prints `SYNTAX_OK`, exit 0.
-- [ ] Step 4: Verify - Run: `./make-dmg.sh` (a full ad-hoc build; roughly 1-4 minutes) - Expected: exit 0; stderr carries the `WARNING: this DMG is NOT notarized` banner; stdout ends with `Notarized: NO - do not publish this build`; and the `shasum -c` line printed `Remaindr-1.0.dmg: OK`.
+- [ ] Step 4: Verify - Run: `./make-dmg.sh` (a full ad-hoc Release build plus DMG creation; measured at ~20s while planning, allow a few minutes on a cold DerivedData) - Expected: exit 0; stderr carries the `WARNING: this DMG is NOT notarized` banner; stdout ends with `Notarized: NO - do not publish this build`; and the `shasum -c` line printed `Remaindr-1.0.dmg: OK`.
 - [ ] Step 5: Verify - Run: `(cd build && cat Remaindr-1.0.dmg.sha256 && shasum -a 256 -c Remaindr-1.0.dmg.sha256)` - Expected: the file holds exactly one line matching `^[0-9a-f]{64}  Remaindr-1\.0\.dmg$` (two spaces, bare filename, no `build/` prefix), and the check prints `Remaindr-1.0.dmg: OK`.
 - [ ] Step 6: Verify - Run: `git status --short build/` - Expected: no output - `build/` is git-ignored, so the new artifacts are not about to be committed. If output appears, do NOT `git add` it; report instead.
 - [ ] Step 7: Commit - `git commit -m "build: publish a SHA-256 sidecar alongside the release DMG"`
@@ -1240,10 +1240,11 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 
 **Steps:**
 
-- [ ] Step 1: In `FUTURE_FEATURES.md`, change `- [ ]` to `- [x]` on exactly these three lines, leaving their text otherwise intact:
-      - `Notarize and staple the DMG in `make-dmg.sh`, then remove the Gatekeeper-bypass wording from the README (audit F-02).`
-      - `Publish SHA-256 checksums alongside each release download.`
-      - `First-party update checker (version check against the latest GitHub release; must not grow into a third-party framework).`
+- [ ] Step 1: In `FUTURE_FEATURES.md`, change the `- [ ]` marker to `- [x]` on exactly the three lines that begin with the following text, leaving the rest of each line byte-identical:
+      1. "Notarize and staple the DMG in" (~L18)
+      2. "Publish SHA-256 checksums alongside each release download." (~L19)
+      3. "First-party update checker (version check against the latest GitHub release" (~L21)
+      Do NOT touch the "Developer ID signed Release builds" line (~L17) or any other checkbox in the file.
 - [ ] Step 2: In `README.md` "## Features", add one bullet immediately before the `Zero third-party dependencies` bullet:
       ```markdown
       - 🆕 **Update check** — compares the running version against the latest GitHub release once a day and links to the release page; it never downloads or installs anything
