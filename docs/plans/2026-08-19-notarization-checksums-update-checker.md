@@ -7,6 +7,10 @@
 > worktree (see Execution - there is only one track). Steps use checkbox (`- [ ]`)
 > syntax for tracking; tick them as you go.
 > Run the `## Preflight` checks BEFORE task 1 and report anything down.
+>
+> **Every fenced code block inside a Step is indented 6 spaces for Markdown list
+> continuation.** Dedent by exactly 6 before writing it into a `.swift`, `.sh`, or
+> `.md` file. Nothing else about the content changes.
 
 **Goal:** Make a published Remaindr release verifiable end to end - notarized and stapled by `make-dmg.sh`, shipped with a SHA-256 sidecar, and discoverable by a first-party in-app update check against the latest GitHub release.
 
@@ -18,35 +22,60 @@ The app half adds a new `Update/` group of four small Foundation-first types (`A
 
 **Spec:** none - planned from conversation, against three unchecked items in `FUTURE_FEATURES.md` "Distribution & trust" and finding **F-02** in `SECURITY_AUDIT.md:54-94`.
 
-**Base commit:** `b6a740d`. Every line reference, anchor, and "already exists" claim below describes THIS tree. When an anchor does not match, run `git log --oneline b6a740d..HEAD` to tell "the plan was wrong" apart from "the file moved on".
+**Base commit:** `b6a740d`. Every line reference, anchor, and "already exists" claim below describes THIS tree, with one stated exception: inside Tasks 1 and 2 the `~L` hints for `make-dmg.sh` are pre-edit `b6a740d` positions, and the file grows by roughly 45 lines during Task 1, so Task 2's hints shift accordingly. The anchors are exact strings; grep them and treat the numbers as hints. When an anchor does not match, run `git log --oneline b6a740d..HEAD` to tell "the plan was wrong" apart from "the file moved on".
 
 **Confidence:** 9/10 - the one unresolved uncertainty is that this machine holds zero code-signing identities, so the *Accepted* branch of the notarization block in Task 1 is reference code no agent can execute here; its failure branches, its syntax, and every other task in the plan are agent-verifiable.
 
+**Confidence arithmetic** (rubric from the writing-plans skill, counted against this file, not estimated):
+
+```
+10   start
+ -0  Consumes: entries without a full signature          (0 found - every Consumes/Produces entry is a full signature)
+ -0  Patterns-to-Mirror SOURCEs not verified             (0 - all 8 read from the real files at b6a740d)
+ -0  Verify - Human: with no paired proxy                (0 - both 👤 items carry a Proxy: line)
+ -0  NOT-building entries cutting a requirement on an
+     unproven claim about the codebase                   (0 - F-01's block, the CI file's scope, the v1.0.0
+                                                          asset list, and PinnedSession's fail-closed
+                                                          behaviour each carry a file:line or a run command)
+ -0  tasks touching a schema / inferred type without
+     consumers listed                                    (0 - Preferences.ConfigFile is `private`; its one
+                                                          consumer is named and grep-verified in Task 6)
+ -0  Preflight checks written but never run              (0 - all 13 were executed while planning)
+ -0  parallel tracks below the cost floor                (0 - the plan is single-track sequential)
+ -1  named residual: the notarized/Accepted path of make-dmg.sh cannot be executed on any
+     machine without a Developer ID certificate, so it ships as reviewed reference code
+=  9
+```
+
+
 **Validated while planning (not just written):** every Swift file in Tasks 4-8 was applied to a throwaway copy of this repo at `b6a740d` and built - `** TEST SUCCEEDED **`, `Executed 27 tests, with 0 failures`, and `** BUILD SUCCEEDED **` for Release with `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`, matching the counts each task predicts. The `make-dmg.sh` edits were applied the same way: all three anchors matched exactly, `bash -n` passed, the `REQUIRE_NOTARIZATION=1` gate exited 1 in 0.7s with the quoted message, a full `./make-dmg.sh` run exited 0 and emitted a sidecar matching `^[0-9a-f]{64}  Remaindr-1\.0\.dmg$` that `shasum -c` reported as `OK`, and `hdiutil verify` reported the image VALID. Every `grep` Expected in Tasks 3 and 9 was run against edited copies and returned the stated value. What was NOT validated: the notarized path (no identity), and the two 👤 Human items.
+
+**One deliberate deviation from the writing-plans checklist:** several tasks carry three `Verify - Run:` steps rather than one. Each extra step is a single cheap `grep` with a stated Expected, and no task exceeds three files or one commit, so the intent of the one-verify rule (small tasks) holds while the evidence per task is stronger. Flagged here so it reads as a choice, not an oversight.
 
 **NOT building:**
 
-- Developer ID signing configuration in `project.pbxproj` (`CODE_SIGN_STYLE`, `DEVELOPMENT_TEAM`, `CODE_SIGN_IDENTITY`). That is audit **F-01**, recorded in `FUTURE_FEATURES.md` as "blocked on obtaining a signing identity", and Preflight confirms no identity exists. `make-dmg.sh:40-50` already discovers a Developer ID identity at runtime and re-signs with it; that stays the mechanism.
+- Developer ID signing configuration in `project.pbxproj` (`CODE_SIGN_STYLE`, `DEVELOPMENT_TEAM`, `CODE_SIGN_IDENTITY`). That is audit **F-01**, recorded in `FUTURE_FEATURES.md` as "blocked on obtaining a signing identity", and Preflight confirms no identity exists. `make-dmg.sh:39-48` already discovers a Developer ID identity at runtime and re-signs with it; that stays the mechanism.
 - Auto-download, auto-install, background daemons, delta updates, or a Sparkle-style appcast. The update checker performs one unauthenticated GET and renders a link. Anything that fetches or writes an executable turns this into the third-party-style framework the requirement forbids.
 - A GitHub Actions release workflow that runs `make-dmg.sh` and uploads assets. `.github/workflows/ci.yml` is build-and-test only, and automating publication needs signing secrets that do not exist yet.
 - Re-cutting or re-uploading the existing `v1.0.0` GitHub release (asset `AIUsageBar-v1.0.0.zip`, confirmed in Preflight). The README instead states plainly that a release without a `.sha256` sidecar predates this pipeline.
 - Certificate pinning for `api.github.com`. See Global Constraints - a deliberate decision with a stated reason, not an omission.
 - Any change to `UsageProvider`, `ProviderStatus`, `ProviderError`, or `ProviderKind`. The update checker is not a provider.
 - A user-facing "check for updates automatically" toggle. Not requested; the 24-hour throttle plus a manual button is the whole surface.
+- The app-icon asset catalog item that sits between the checksum and update-checker entries in the same `FUTURE_FEATURES.md` section (`:20`). It was not requested here and shares no code with this work; it stays unticked.
 
 ## Global Constraints
 
 - **No third-party Swift packages** (`AGENTS.md`, "Hard rules"). If one seems needed, STOP and ask.
-- **The build must succeed with zero warnings** (`AGENTS.md`, "Commands"). CI runs `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES` (`.github/workflows/ci.yml:24-40`), so a warning is a hard failure, not a nit.
+- **The build must succeed with zero warnings** (`AGENTS.md`, "Commands"). CI runs `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES` (`.github/workflows/ci.yml:21-37`), so a warning is a hard failure, not a nit.
 - **The UI talks to providers only through `UsageProvider`, and that protocol's shape does not change** (`AGENTS.md`, "Stop and ask before"). `UpdateChecker` deliberately does NOT conform to `UsageProvider` and does NOT reuse `ProviderError`; an update check is not a provider reading and must not widen that surface.
 - **API keys live in the macOS Keychain only** - never `UserDefaults`, plaintext, logs, or commits. Nothing here touches a credential; `Preferences` gains one non-secret timestamp, consistent with that file's own header ("Non-secret settings only", `Remaindr/Remaindr/Models/Preferences.swift:3`).
 - **Use `URLSession.shared`, never `PinnedSession.shared`, for the GitHub call.** `PinnedSession.Delegate` is fail-closed: a host absent from `PinnedSession.pins` reaches `return (.cancelAuthenticationChallenge, nil)` (`Remaindr/Remaindr/Providers/PinnedSession.swift:64-67`), so routing the update check through it would cancel every check. Adding an `api.github.com` pin is explicitly rejected: the pins are hand-captured leaf certificate hashes (`PinnedSession.swift:20-34`) and GitHub rotates certificates far more often than this app ships, so a stale pin would silently disable update checking. System trust is the right level because no key or token is sent.
 - **The link target is a compile-time constant, never a URL taken from the response.** The GitHub call is unauthenticated and unpinned, so an `html_url` read out of the payload would be an attacker-choosable link the user is invited to click. Link to `https://github.com/theerakarnm/remaindr/releases/latest` and derive nothing from the body but a version string.
-- **Never fabricate a number or a claim** (`AGENTS.md`, "Hard rules"). Applied to documentation here: the README must not describe releases as notarized in a way that misdescribes assets already published.
+- **Never fabricate a number, an endpoint, a field name, or a response shape.** `AGENTS.md` "Hard rules" says "Never invent an endpoint path, field name, or response shape you haven't verified"; the "never a fabricated number" rule is in its "Provider data" section. Applied to documentation here: the README must not describe releases as notarized in a way that misdescribes assets already published.
 - **The collapsed menu bar label stays within `CollapsedLabelText.budget = 14` characters.** No task in this plan touches `MenuBarLabel.swift` or `CollapsedLabelText.swift`; the update notice lives in the dropdown and Settings only.
 - **Only make the change directly requested** (`AGENTS.md`, "Hard rules"). No onboarding flows, no extra abstractions, no files beyond those in each task's **Files** block.
-- **`make-dmg.sh` keeps `set -euo pipefail`** (`make-dmg.sh:11`). Every added command inherits fail-fast and pipefail semantics; write conditionals as `if` blocks rather than `a && b` statements, which `set -e` treats as a failing statement when `a` is false.
-- **Stapling must be the last write to the DMG**, as the script already documents at `make-dmg.sh:118-119`. The SHA-256 sidecar is therefore computed after stapling, never before.
+- **`make-dmg.sh` keeps `set -euo pipefail`** (`make-dmg.sh:10`). Every added command inherits fail-fast and pipefail semantics; write conditionals as `if` blocks rather than `a && b` statements, which `set -e` treats as a failing statement when `a` is false.
+- **Stapling must be the last write to the DMG**, as the script already documents at `make-dmg.sh:97-98`. The SHA-256 sidecar is therefore computed after stapling, never before.
 
 ## Patterns to Mirror
 
@@ -58,7 +87,7 @@ New Swift files go in a new group directory `Remaindr/Remaindr/Update/`, alongsi
 
 **No `project.pbxproj` edit is needed to add a file.** Both targets use file-system-synchronised groups, so any `.swift` file dropped under `Remaindr/Remaindr/` (app) or `Remaindr/RemaindrTests/` (tests) is compiled automatically:
 
-<!-- SOURCE: Remaindr/Remaindr.xcodeproj/project.pbxproj:9-18 -->
+<!-- SOURCE: Remaindr/Remaindr.xcodeproj/project.pbxproj:9-19 -->
 ```
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		AA0000000000000000000010 /* Remaindr */ = {
@@ -150,7 +179,7 @@ Decodable payloads keep the server's raw snake_case field names rather than decl
 
 ### Error enum: `Error, Equatable, Sendable` with a `shortDescription` that leaks nothing
 
-<!-- SOURCE: Remaindr/Remaindr/Models/ProviderStatus.swift:41-66 -->
+<!-- SOURCE: Remaindr/Remaindr/Models/ProviderStatus.swift:42-67 -->
 ```swift
 /// Every distinct failure the UI must be able to show differently.
 enum ProviderError: Error, Equatable, Sendable {
@@ -182,7 +211,7 @@ enum ProviderError: Error, Equatable, Sendable {
 
 ### Observable store: `@MainActor @Observable final class`, `private(set)` state, failure never blanks the last good value
 
-<!-- SOURCE: Remaindr/Remaindr/UI/ProviderStore.swift:12-24 and :77-89 -->
+<!-- SOURCE: Remaindr/Remaindr/UI/ProviderStore.swift:11-23 and :79-89 -->
 ```swift
 @MainActor
 @Observable
@@ -214,7 +243,7 @@ final class ProviderStore {
 
 ### Preferences: every persisted field optional, `didSet { persist() }`, one `persist()` writing the whole struct
 
-<!-- SOURCE: Remaindr/Remaindr/Models/Preferences.swift:10-18 and :57-71 -->
+<!-- SOURCE: Remaindr/Remaindr/Models/Preferences.swift:9-17 and :59-71 -->
 ```swift
     /// Every field is optional on purpose. `ConfigFileStore.load` decodes with `try?`, so a
     /// single non-optional field missing from an older file would throw and silently reset
@@ -264,7 +293,7 @@ enum CollapsedLabelText {
 
 ### Tests: XCTest, `@testable import Remaindr`, one behaviour per method, `XCTAssertEqual` on a value
 
-<!-- SOURCE: Remaindr/RemaindrTests/CollapsedLabelTextTests.swift:1-16 and :26-38 -->
+<!-- SOURCE: Remaindr/RemaindrTests/CollapsedLabelTextTests.swift:1-11 and :19-28 -->
 ```swift
 import XCTest
 @testable import Remaindr
@@ -294,7 +323,7 @@ final class CollapsedLabelTextTests: XCTestCase {
 
 ### Shell: fail-fast guard that prints to stderr and exits non-zero
 
-<!-- SOURCE: make-dmg.sh:52-56 -->
+<!-- SOURCE: make-dmg.sh:50-54 -->
 ```bash
 # 1c. Refuse to ship any build that still carries the debug entitlement.
 if codesign -d --entitlements - "$APP_PATH" 2>/dev/null | grep -q get-task-allow; then
@@ -305,7 +334,7 @@ fi
 
 ### SwiftUI: a labelled, non-interactive Settings row
 
-<!-- SOURCE: Remaindr/Remaindr/UI/SettingsView.swift:43-48 -->
+<!-- SOURCE: Remaindr/Remaindr/UI/SettingsView.swift:41-45 -->
 ```swift
                 LabeledContent("Claude") {
                     Text("Reads ~/.claude/projects. No key needed.")
@@ -320,10 +349,10 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 
 ### DURABLE - true until the repo itself changes
 
-- **No `project.pbxproj` edit is required to add a Swift file to either target.** Evidence: the `PBXFileSystemSynchronizedRootGroup` entries at `Remaindr/Remaindr.xcodeproj/project.pbxproj:9-18`, referenced from both targets' `fileSystemSynchronizedGroups` lists (`:86-88` and `:107-109`). Consequence: Tasks 4-7 create files and nothing else. If the executor finds itself editing `project.pbxproj`, it has gone wrong - STOP and re-read this entry.
+- **No `project.pbxproj` edit is required to add a Swift file to either target.** Evidence: the `PBXFileSystemSynchronizedRootGroup` entries at `Remaindr/Remaindr.xcodeproj/project.pbxproj:9-19`, referenced from both targets' `fileSystemSynchronizedGroups` lists (`:88-90` and `:109-111`). Consequence: Tasks 4-7 create files and nothing else. If the executor finds itself editing `project.pbxproj`, it has gone wrong - STOP and re-read this entry.
 - **No test in the suite touches a network or a `URLSession`.** Evidence: `Remaindr/RemaindrTests/` contains exactly one file, `CollapsedLabelTextTests.swift`, and every assertion in it is a pure value comparison. Consequence: Tasks 5 and 7 test `static` parsers and text builders against `Data`/value literals; the executor must not add a test that calls `api.github.com`.
 - **`PinnedSession` is fail-closed for unpinned hosts.** Evidence: `Remaindr/Remaindr/Providers/PinnedSession.swift:64-67` returns `.cancelAuthenticationChallenge` when `pins[host]` is nil, and `pins` holds only `api.anthropic.com`, `api.z.ai`, `api.deepseek.com` (`:20-34`). Consequence: Task 5 uses `URLSession.shared`. Repeated as a Gotcha on that task because it is the single most likely wrong turn in this plan.
-- **The app's `CFBundleShortVersionString` is `1.0`, generated from `MARKETING_VERSION`.** Evidence: `GENERATE_INFOPLIST_FILE = YES` with `MARKETING_VERSION = 1.0` in both app build configurations (`project.pbxproj:229,240` Debug and `:268,279` Release); confirmed against the built artifact - `/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" build/dmg-staging/Remaindr.app/Contents/Info.plist` printed `1.0`. Consequence: Task 4's zero-padding comparison is load-bearing, not decorative.
+- **The app's `CFBundleShortVersionString` is `1.0`, generated from `MARKETING_VERSION`.** Evidence: `GENERATE_INFOPLIST_FILE = YES` with `MARKETING_VERSION = 1.0` in both app build configurations (`project.pbxproj:242,249` Debug and `:264,271` Release); cross-checked against a built artifact - `/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" build/dmg-staging/Remaindr.app/Contents/Info.plist` printed `1.0`. The `project.pbxproj` half is the durable evidence; that `build/` path is git-ignored and will not exist in a fresh clone, so re-derive from the pbxproj rather than treating the missing file as drift. Consequence: Task 4's zero-padding comparison is load-bearing, not decorative.
 - **`notarytool`, `stapler`, `spctl`, `shasum` and `codesign` are all present.** Evidence: `xcrun --find notarytool` printed `/Applications/Xcode.app/Contents/Developer/usr/bin/notarytool`; `xcrun --find stapler` printed the same directory; `which spctl` printed `/usr/sbin/spctl`; `which shasum` printed `/usr/bin/shasum`. Consequence: Tasks 1 and 2 install nothing.
 - **`shellcheck` is NOT installed.** Evidence: `which shellcheck` returned nothing. Consequence: shell verification in Tasks 1 and 2 uses `bash -n` plus behavioural runs, not a linter. Do not add a `shellcheck` step.
 - **`treehouse` IS installed** at `/Users/jametirakarn/.local/bin/treehouse`, but this plan is single-track and does not use it. Consequence: work in the repo directory directly; do not lease a worktree.
@@ -339,6 +368,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 - **The GitHub releases endpoint answers 200 with a parseable tag.** Check: `curl -s -o /tmp/rel.json -w "%{http_code}\n" -H "Accept: application/vnd.github+json" https://api.github.com/repos/theerakarnm/remaindr/releases/latest` then `python3 -c "import json;d=json.load(open('/tmp/rel.json'));print(d['tag_name'], d['draft'], d['prerelease'], [a['name'] for a in d['assets']])"` - Recorded while planning: HTTP `200`, then `v1.0.0 False False ['AIUsageBar-v1.0.0.zip']`. Needed by: Task 5's endpoint and field claims, and the End-to-end live check. **Live consequence:** tag `v1.0.0` against bundle version `1.0` must compare EQUAL, so a correct build reports "Up to date" today. A build that says "Update available: 1.0.0" has a broken comparison, not a new release to celebrate.
 - **GitHub's unauthenticated rate limit is 60 requests per hour per IP.** Check: `curl -sI https://api.github.com/repos/theerakarnm/remaindr/releases/latest | grep -i x-ratelimit` - Recorded: `x-ratelimit-limit: 60`, `x-ratelimit-remaining: 57`. Needed by: Task 5's 403 handling and Task 6's 24-hour throttle. If `x-ratelimit-remaining` is `0` when the End-to-end live check runs, wait for `x-ratelimit-reset` rather than recording a false failure.
 - **Xcode toolchain.** Check: `xcodebuild -version` - Recorded: `Xcode 26.6`, `Build version 17F113`. Needed by: every Swift task. A materially older Xcode may reject the Swift 6 `@Observable` and strict-concurrency code as written.
+- **`python3` is on PATH.** Check: `python3 -c "print(1)"` - Recorded: `1`. Needed by: the GitHub-payload Preflight check above and two End-to-end items, which use it to pretty-print JSON. If absent, substitute any JSON reader; nothing in the app depends on it.
 - **Working tree is clean at `b6a740d`.** Check: `git status --short` - Recorded: empty. Needed by: every task's Commit step.
 - **Network reachability to `api.github.com`.** Check: `curl -sS -o /dev/null -w "%{http_code}\n" https://api.github.com` - Recorded: `200`. Needed by: the End-to-end live check only. If down: the End-to-end "Update check reports up to date against the live endpoint" item is deferred and reported, not ticked.
 
@@ -361,7 +391,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 ### Task 1: Fail-fast signing preflight and an asserted notarization verdict in `make-dmg.sh`
 
 **Files:**
-- Modify: `make-dmg.sh` (anchors: `LAYOUT_SCRIPT="$LAYOUT_DIR/layout.applescript"` ~L21; `IDENTITY=$(security find-identity` ~L41; `# 5. Notarize and staple when both a Developer ID identity` ~L122-131)
+- Modify: `make-dmg.sh` (anchors: `LAYOUT_SCRIPT="$LAYOUT_DIR/layout.applescript"` ~L20; `IDENTITY=$(security find-identity` ~L40; `# 5. Notarize and staple when both a Developer ID identity` ~L103-109)
 
 **Interfaces:**
 - Produces (consumed by Tasks 2 and 3):
@@ -370,11 +400,11 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
   - shell variable `DMG` - unchanged from today: `build/$APP_NAME-$VERSION.dmg`.
   - environment input `REQUIRE_NOTARIZATION` - `"1"` makes a run that cannot notarize exit 1 before the build starts; anything else, including unset, permits the ad-hoc path with a loud warning.
 
-**Gotcha:** the script runs under `set -euo pipefail` (`make-dmg.sh:11`). Two consequences. (a) Write every conditional as an `if` block: a bare `[ -n "$X" ] && cmd` statement returns non-zero when the test fails, and `set -e` then kills the script. (b) `pipefail` is already on, so `xcrun notarytool submit ... | tee file` correctly surfaces `notarytool`'s exit status - do not add `|| true` to that pipeline. Separately, `xcrun notarytool submit --wait` has historically exited 0 on a *rejected* submission, so the exit code alone is not sufficient evidence; the `status: Accepted` line must be asserted from the captured output.
+**Gotcha:** the script runs under `set -euo pipefail` (`make-dmg.sh:10`). Two consequences. (a) Write every conditional as an `if` block: a bare `[ -n "$X" ] && cmd` statement returns non-zero when the test fails, and `set -e` then kills the script. (b) `pipefail` is already on, so `xcrun notarytool submit ... | tee file` correctly surfaces `notarytool`'s exit status - do not add `|| true` to that pipeline. Separately, `xcrun notarytool submit --wait` has historically exited 0 on a *rejected* submission, so the exit code alone is not sufficient evidence; the `status: Accepted` line must be asserted from the captured output.
 
 **Steps:**
 
-- [ ] Step 1: Hoist identity discovery and add the hard gate. Immediately after the `LAYOUT_SCRIPT="$LAYOUT_DIR/layout.applescript"` line (~L21) and before the `# 1. Build the app` comment, insert:
+- [ ] Step 1: Hoist identity discovery and add the hard gate. Immediately after the `LAYOUT_SCRIPT="$LAYOUT_DIR/layout.applescript"` line (~L20) and before the `# 1. Build the app` comment, insert:
       ```bash
 
       # 0. Signing preflight, before the build. A release run that cannot notarize
@@ -397,11 +427,11 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
         fi
       fi
       ```
-- [ ] Step 2: Delete the now-duplicated discovery line inside step 1b. Remove exactly this one line (~L41), leaving the `ENTITLEMENTS=` line above it and the `if [ -n "$IDENTITY" ]; then` block below it untouched:
+- [ ] Step 2: Delete the now-duplicated discovery line inside step 1b. Remove exactly this one line (~L40), leaving the `ENTITLEMENTS=` line above it and the `if [ -n "$IDENTITY" ]; then` block below it untouched:
       ```bash
       IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | awk '/Developer ID Application/ {print $2; exit}')
       ```
-- [ ] Step 3: Replace the whole of step 5. Delete these lines (~L122-131):
+- [ ] Step 3: Replace the whole of step 5. Delete these lines (~L103-109):
       ```bash
       # 5. Notarize and staple when both a Developer ID identity and a stored notary
       #    profile exist. Store the profile once with:
@@ -457,7 +487,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 ### Task 2: Publish a SHA-256 sidecar next to the DMG
 
 **Files:**
-- Modify: `make-dmg.sh` (anchor: `echo "Created: $DMG"`, in the trailing summary block, ~L133-136)
+- Modify: `make-dmg.sh` (anchor: `echo "Created: $DMG"`, in the trailing summary block, ~L111-113)
 
 **Interfaces:**
 - Consumes (from Task 1): shell variables `DMG` and `NOTARIZED`.
@@ -465,7 +495,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
   - build artifact `build/Remaindr-<version>.dmg.sha256` - one line in `shasum -a 256` output format, whose filename column is the **bare** DMG basename (`Remaindr-1.0.dmg`), never a path (`build/Remaindr-1.0.dmg`).
   - the user-facing verification contract, run from whatever folder the two files were downloaded into: `shasum -a 256 -c Remaindr-<version>.dmg.sha256` prints `Remaindr-<version>.dmg: OK`.
 
-**Gotcha:** two ordering and formatting traps. First, the checksum must be computed AFTER the `xcrun stapler staple` added in Task 1 - stapling rewrites the disk image, so a hash taken before it will not match what a user downloads; the script already flags this constraint in its own comment at `make-dmg.sh:118-119`. Second, `shasum -a 256 "build/x.dmg"` writes the *path* into the sidecar, and `shasum -c` then fails for anyone who put both files in `~/Downloads`. Use a subshell `cd` so only the basename is recorded.
+**Gotcha:** two ordering and formatting traps. First, the checksum must be computed AFTER the `xcrun stapler staple` added in Task 1 - stapling rewrites the disk image, so a hash taken before it will not match what a user downloads; the script already flags this constraint in its own comment at `make-dmg.sh:97-98`. Second, `shasum -a 256 "build/x.dmg"` writes the *path* into the sidecar, and `shasum -c` then fails for anyone who put both files in `~/Downloads`. Use a subshell `cd` so only the basename is recorded.
 
 **Steps:**
 
@@ -477,7 +507,9 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
       DMG_NAME=$(basename "$DMG")
       DMG_DIR=$(dirname "$DMG")
       # The subshell cd keeps the bare filename in the sidecar, so a user can verify from
-      # whatever folder they downloaded both files into.
+      # whatever folder they downloaded both files into. The `&&` here is deliberate and is
+      # NOT the pattern Global Constraints warns about: a failing cd must abort the line,
+      # and under set -e the failing subshell aborts the script - which is what is wanted.
       ( cd "$DMG_DIR" && shasum -a 256 "$DMG_NAME" > "$DMG_NAME.sha256" )
       ( cd "$DMG_DIR" && shasum -a 256 -c "$DMG_NAME.sha256" )
       ```
@@ -715,7 +747,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
   - `func check() async throws -> UpdateStatus`
   - `static func parse(_ data: Data, currentVersion: AppVersion) throws -> UpdateStatus`
 
-**Gotcha:** **use `URLSession.shared`, not `PinnedSession.shared`.** `PinnedSession.Delegate` cancels the challenge for any host absent from its pin table (`PinnedSession.swift:64-67`), and `api.github.com` is not in that table, so routing this call through the app's usual session would make every check fail with a cancelled task. Adding a pin is explicitly rejected in Global Constraints. Second gotcha: do not use the payload's `html_url` for the link - GitHub answers this endpoint unauthenticated and unpinned, so a tampered `html_url` would become an attacker-chosen destination the user is invited to click; `releasesPageURL` is a constant for that reason. Third: GitHub answers **403**, not 429, when an unauthenticated caller exhausts its 60-per-hour budget, so both map to `.rateLimited`. Fourth: `catch let error as URLError` is a non-exhaustive catch inside a `throws` function - that is legal Swift and intentional, letting any non-`URLError` propagate unchanged, mirroring how `mapTransportFailure` rethrows what it does not recognise (`UsageProvider.swift:18`).
+**Gotcha:** **use `URLSession.shared`, not `PinnedSession.shared`.** `PinnedSession.Delegate` cancels the challenge for any host absent from its pin table (`PinnedSession.swift:64-67`), and `api.github.com` is not in that table, so routing this call through the app's usual session would make every check fail with a cancelled task. Adding a pin is explicitly rejected in Global Constraints. Second gotcha: do not use the payload's `html_url` for the link - GitHub answers this endpoint unauthenticated and unpinned, so a tampered `html_url` would become an attacker-chosen destination the user is invited to click; `releasesPageURL` is a constant for that reason. Third: GitHub answers **403**, not 429, when an unauthenticated caller exhausts its 60-per-hour budget, so both map to `.rateLimited`. Fourth: `catch let error as URLError` is a non-exhaustive catch inside a `throws` function - that is legal Swift and intentional, letting any non-`URLError` propagate unchanged, mirroring how `mapTransportFailure` rethrows what it does not recognise (`UsageProvider.swift:17`).
 
 **Steps:**
 
@@ -921,8 +953,8 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
       }
       ```
 - [ ] Step 3: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -20` - Expected: `** TEST SUCCEEDED **` and `Executed 21 tests, with 0 failures` (6 baseline + 5 from Task 4 + 10 here).
-- [ ] Step 4: Verify - Run: `grep -rn "PinnedSession" Remaindr/Remaindr/Update/` - Expected: no output. The update path must never reach the fail-closed pinning session.
-- [ ] Step 5: Verify - Run: `grep -n "html_url" Remaindr/Remaindr/Update/UpdateChecker.swift` - Expected: no output. The link is a constant, and `html_url` is not even decoded.
+- [ ] Step 4: Verify - Run: `grep -rn "PinnedSession" Remaindr/Remaindr/Update/; echo "grep_exit=$?"` - Expected: no matching lines and `grep_exit=1`. The update path must never reach the fail-closed pinning session.
+- [ ] Step 5: Verify - Run: `grep -n "html_url" Remaindr/Remaindr/Update/UpdateChecker.swift; echo "grep_exit=$?"` - Expected: no matching lines and `grep_exit=1`. The link is a constant, and `html_url` is not even decoded.
 - [ ] Step 6: Commit - `git commit -m "feat: add UpdateChecker, an unauthenticated GitHub latest-release version check"`
 
 ---
@@ -931,7 +963,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 
 **Files:**
 - Create: `Remaindr/Remaindr/Update/UpdateStore.swift`
-- Modify: `Remaindr/Remaindr/Models/Preferences.swift` (anchors: `private struct ConfigFile: Codable` ~L13-18; `var keychainAccessibilityUpgraded: Bool` ~L61-63; `private func persist()` ~L65-71; the `private init(store:)` body ~L26-33)
+- Modify: `Remaindr/Remaindr/Models/Preferences.swift` (anchors: `private struct ConfigFile: Codable` ~L12-17; `var keychainAccessibilityUpgraded: Bool {` ~L62-64; `private func persist()` ~L66-72; the `self.keychainAccessibilityUpgraded = loaded?` line inside `private init(store:)` ~L32)
 
 **Interfaces:**
 - Consumes (from Tasks 4 and 5): `AppVersion`; `UpdateStatus`; `UpdateCheckError`; `UpdateChecker.init(session:currentVersion:)`; `func check() async throws -> UpdateStatus`.
@@ -945,7 +977,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
   - `func check(now: Date = Date()) async`
   - on `Preferences`: `var lastUpdateCheck: Date?` with `didSet { persist() }`
 
-**Gotcha:** `Preferences.ConfigFile` is a `private` nested struct read and written only inside `Preferences.swift` - verified with `grep -rn "ConfigFile" Remaindr/`, which matches that one file. Adding an **optional** field to it is therefore backward compatible in both directions: an existing `~/.remaindr` written before this change decodes with `lastUpdateCheckAt == nil`, and the file's own header comment (`Preferences.swift:10-12`) explains why every field must stay optional. Do not make it non-optional. Second gotcha: `didSet` does not fire for assignments made inside `init`, which is what keeps the current initialiser from writing the file on every launch - assign `lastUpdateCheck` in `init` like every other field, not through a setter. Third: a *failed* check still stamps `lastUpdateCheck`, deliberately, so a persistently offline machine does not retry on every single launch; the cost is that an offline launch spends that day's slot, which the manual "Check now" button exists to override.
+**Gotcha:** `Preferences.ConfigFile` is a `private` nested struct read and written only inside `Preferences.swift` - verified with `grep -rn "ConfigFile" Remaindr/`, which matches that one file. Adding an **optional** field to it is therefore backward compatible in both directions: an existing `~/.remaindr` written before this change decodes with `lastUpdateCheckAt == nil`, and the file's own header comment (`Preferences.swift:9-11`) explains why every field must stay optional. Do not make it non-optional. Second gotcha: `didSet` does not fire for assignments made inside `init`, which is what keeps the current initialiser from writing the file on every launch - assign `lastUpdateCheck` in `init` like every other field, not through a setter. Third: a *failed* check still stamps `lastUpdateCheck`, deliberately, so a persistently offline machine does not retry on every single launch; the cost is that an offline launch spends that day's slot, which the manual "Check now" button exists to override.
 
 **Steps:**
 
@@ -1009,7 +1041,9 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
               return latest
           }
 
-          /// The launch path. Skips the network entirely when the last check is recent.
+          /// Called the first time the dropdown is built. Skips the network entirely when
+          /// the last check is recent. Note this is NOT app launch: `MenuBarExtra(.window)`
+          /// builds its content lazily, so the first check happens on first dropdown open.
           func checkIfDue(now: Date = Date()) async {
               if let last = preferences.lastUpdateCheck,
                  now.timeIntervalSince(last) < Self.minimumInterval {
@@ -1040,7 +1074,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
       }
       ```
 - [ ] Step 6: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -20` - Expected: `** TEST SUCCEEDED **` and `Executed 21 tests, with 0 failures` - unchanged from Task 5, because this task adds behaviour but no test. A *warning* here is a failure: strict concurrency must accept `UpdateStore` as written.
-- [ ] Step 7: Verify - Run: `grep -rn "ConfigFile" Remaindr/ --include=*.swift` - Expected: matches only inside `Remaindr/Remaindr/Models/Preferences.swift`, confirming the Codable struct still has exactly one consumer and no hand-built fixture elsewhere broke.
+- [ ] Step 7: Verify - Run: `grep -rnw "ConfigFile" Remaindr/ --include=*.swift` - Expected: matches only inside `Remaindr/Remaindr/Models/Preferences.swift` (lines 12, 19, 25, 67 after this edit), confirming the Codable struct still has exactly one consumer and that no hand-built fixture elsewhere broke. `-w` is required: without it the unrelated `ConfigFileStore` type in `Models/ConfigFileStore.swift:6` matches on the substring and the result reads as drift.
 - [ ] Step 8: Commit - `git commit -m "feat: add UpdateStore with a once-a-day throttle persisted in Preferences"`
 
 ---
@@ -1147,15 +1181,15 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 ### Task 8: Wire the update check into the app, the dropdown, and Settings
 
 **Files:**
-- Modify: `Remaindr/Remaindr/App/RemaindrApp.swift` (anchors: `@State private var scheduler: RefreshScheduler` ~L7; `let scheduler = RefreshScheduler(store: store, preferences: preferences)` ~L15; `.task { scheduler.start() }` ~L23; `SettingsView(preferences: preferences, scheduler: scheduler)` ~L32)
-- Modify: `Remaindr/Remaindr/UI/DropdownPanel.swift` (anchors: `let store: ProviderStore` ~L6; `Divider()` immediately preceding `Button("Refresh")`, ~L14-16)
-- Modify: `Remaindr/Remaindr/UI/SettingsView.swift` (anchors: `let scheduler: RefreshScheduler` ~L6; `if let message {` inside `Section("General")`, ~L79)
+- Modify: `Remaindr/Remaindr/App/RemaindrApp.swift` (anchors: `@State private var scheduler: RefreshScheduler` ~L7; `let scheduler = RefreshScheduler(store: store, preferences: preferences)` ~L16; `.task { scheduler.start() }` ~L25; `SettingsView(preferences: preferences, scheduler: scheduler)` ~L32)
+- Modify: `Remaindr/Remaindr/UI/DropdownPanel.swift` (anchors: `let store: ProviderStore` ~L6; `Divider()` immediately preceding `Button("Refresh")`, ~L13)
+- Modify: `Remaindr/Remaindr/UI/SettingsView.swift` (anchors: `let scheduler: RefreshScheduler` ~L5; `if let message {` inside `Section("General")`, ~L78)
 
 **Interfaces:**
 - Consumes (from Tasks 5, 6, 7): `UpdateStore.init(checker:preferences:)`; `UpdateStore.availableVersion`; `UpdateStore.status`; `UpdateStore.error`; `UpdateStore.isChecking`; `func check(now:) async`; `func checkIfDue(now:) async`; `UpdateChecker.releasesPageURL`; `UpdateStatusText.settings(status:error:isChecking:)`; `UpdateStatusText.dropdown(available:)`.
 - Produces: no new API - the last task in the app half.
 
-**Gotcha:** `DropdownPanel`'s `.task` modifier is where `scheduler.start()` already lives (`RemaindrApp.swift:23`), so it is the established place to kick off launch work in this app - attach `await updateStore.checkIfDue()` to that same modifier rather than inventing a new lifecycle hook. Second: `DropdownPanel` is `.frame(width: 300)` (`DropdownPanel.swift:21`), and "Update available: 1.1.0" at `.font(.caption)` fits comfortably; do not widen the frame. Third: this task deliberately adds no test - every string it renders is already asserted by Task 7, and the visual result is the End-to-end Human check.
+**Gotcha:** `DropdownPanel`'s `.task` modifier is where `scheduler.start()` already lives (`RemaindrApp.swift:25`), so it is the established place to kick off deferred work in this app - attach `await updateStore.checkIfDue()` to that same modifier rather than inventing a new lifecycle hook. **Know what that means:** `MenuBarExtra` with `.menuBarExtraStyle(.window)` builds its content view lazily, so this fires on the first dropdown open, not at app launch - exactly the same timing the existing `scheduler.start()` already has. That is the deliberate choice (mirror the established convention, do not add a second lifecycle mechanism), and the End-to-end section verifies it in that order. Do not "fix" it by moving the call into `RemaindrApp.init()`, which would put a network request on the launch path. Second: `DropdownPanel` is `.frame(width: 300)` (`DropdownPanel.swift:22`), and "Update available: 1.1.0" at `.font(.caption)` fits comfortably; do not widen the frame. Third: this task deliberately adds no test - every string it renders is already asserted by Task 7, and the visual result is the End-to-end Human check.
 
 **Steps:**
 
@@ -1222,8 +1256,8 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
                   }
       ```
 - [ ] Step 6: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -20` - Expected: `** TEST SUCCEEDED **` and `Executed 27 tests, with 0 failures`, with zero warnings (warnings are errors here).
-- [ ] Step 7: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Release -destination 'platform=macOS' -derivedDataPath build/DerivedData build SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -5` - Expected: `** BUILD SUCCEEDED **`. Release uses `SWIFT_COMPILATION_MODE = wholemodule` (`project.pbxproj:216`), which surfaces cross-file diagnostics the Debug test build can miss.
-- [ ] Step 8: Verify - Run: `grep -rn '"Update available\|"Up to date\|"Checking' Remaindr/Remaindr/UI/ Remaindr/Remaindr/App/` - Expected: no output. Every user-visible update string lives in `UpdateStatusText`, so Task 7's tests really are the proxy for what the views render.
+- [ ] Step 7: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Release -destination 'platform=macOS' -derivedDataPath build/DerivedData build SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -5` - Expected: `** BUILD SUCCEEDED **`. Release uses `SWIFT_COMPILATION_MODE = wholemodule` (`project.pbxproj:229`), which surfaces cross-file diagnostics the Debug test build can miss.
+- [ ] Step 8: Verify - Run: `grep -rn '"Update available\|"Up to date\|"Checking' Remaindr/Remaindr/UI/ Remaindr/Remaindr/App/; echo "grep_exit=$?"` - Expected: no matching lines and `grep_exit=1`. Every user-visible update string lives in `UpdateStatusText`, so Task 7's tests really are the proxy for what the views render.
 - [ ] Step 9: Commit - `git commit -m "feat: surface the update check in the dropdown and Settings"`
 
 ---
@@ -1231,14 +1265,14 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 ### Task 9: Tick the shipped items and document the update checker
 
 **Files:**
-- Modify: `FUTURE_FEATURES.md` (anchors: `- [ ] Notarize and staple the DMG in ` ~L18; `- [ ] Publish SHA-256 checksums alongside each release download.` ~L19; `- [ ] First-party update checker` ~L21)
+- Modify: `FUTURE_FEATURES.md` (anchors: `- [ ] Notarize and staple the DMG in ` ~L18; `- [ ] Publish SHA-256 checksums alongside each release download.` ~L19; `- [ ] First-party update checker` ~L21 - all three verified present at `b6a740d`)
 - Modify: `README.md` (anchors: `- 🪶 **Zero third-party dependencies**` at the end of "## Features"; `## Privacy & security` list; `## Project structure` code block)
 
 **Interfaces:**
 - Consumes: nothing executable. Describes the behaviour built in Tasks 1-8.
 - Produces: documentation only.
 
-**Gotcha:** `FUTURE_FEATURES.md` is a hand-maintained checklist, not a generated file, so editing it is allowed - unlike `CHANGELOG.md`, which `AGENTS.md` forbids touching. Tick exactly the three items this plan delivered and leave the Developer ID line (audit F-01) unticked: no signing identity exists, so that item is genuinely still blocked.
+**Gotcha:** `FUTURE_FEATURES.md` is a hand-maintained checklist, not a generated file, so editing it is allowed. (The repo has no `CHANGELOG.md`; the "never hand-edit an auto-generated changelog" rule lives in the user-level agent instructions, not in this repo's `AGENTS.md`.) Tick exactly the three items this plan delivered and leave the Developer ID line (audit F-01) unticked: no signing identity exists, so that item is genuinely still blocked.
 
 **Steps:**
 
@@ -1287,7 +1321,8 @@ Run after all nine tasks are committed and the branch is ready to merge.
 - [ ] Run: `env -u NOTARY_PROFILE REQUIRE_NOTARIZATION=1 ./make-dmg.sh; echo "exit=$?"` - Expected: `exit=1` within ~2 seconds, before any `xcodebuild` output, naming the missing Developer ID identity.
 - [ ] Run: `hdiutil verify build/Remaindr-1.0.dmg` - Expected: the checksum-verification lines end with a valid result and exit 0.
 - [ ] Manual: `curl -s -H "Accept: application/vnd.github+json" https://api.github.com/repos/theerakarnm/remaindr/releases/latest | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['tag_name'], d['draft'], d['prerelease'])"` - Expected: `v1.0.0 False False`, which is exactly the payload `UpdateCheckerTests.testMatchingTagIsUpToDate` asserts against, confirming the live endpoint still matches the shape the parser expects.
-- [ ] Manual: `rm -f ~/.remaindr.e2e-backup; cp ~/.remaindr ~/.remaindr.e2e-backup 2>/dev/null; open build/DerivedData/Build/Products/Release/Remaindr.app; sleep 20; python3 -c "import json;print(json.load(open('$HOME/.remaindr')))"` - Expected: the printed dict contains a `lastUpdateCheckAt` key with a float close to now, proving the launch-path check actually ran and the throttle timestamp persisted. Restore afterwards with `mv ~/.remaindr.e2e-backup ~/.remaindr` if a backup was made, and quit the app from its menu bar item.
+- [ ] Manual: `cp ~/.remaindr ~/.remaindr.e2e-backup 2>/dev/null; rm -f ~/.remaindr; open build/DerivedData/Build/Products/Release/Remaindr.app; sleep 20; pgrep -x Remaindr >/dev/null && echo RUNNING; test -f ~/.remaindr && python3 -c "import json;print(sorted(json.load(open('$HOME/.remaindr'))))" || echo "no config file yet"` - Expected: `RUNNING`, and either `no config file yet` or a key list WITHOUT `lastUpdateCheckAt`. This is the correct result, not a failure: `checkIfDue()` hangs off `DropdownPanel`'s `.task`, and `MenuBarExtra(.window)` builds that content view lazily, so nothing is checked until the menu bar icon is first clicked. The next item is what actually triggers it. Leave the app running.
+
 - [ ] Run: `grep -ni "right-click\|not notarized\|bypass\|early-development" README.md; echo "grep_exit=$?"` - Expected: no lines and `grep_exit=1`. Audit F-02's README half is closed.
-- [ ] 👤 Human: with the app running from the previous step, click the menu bar icon and read the dropdown, then open **Settings → General** - Expected: the dropdown shows the three provider rows with **no** update line (the app is current), and Settings shows an `Updates` row reading `Up to date (1.0)` beside a `Check now` button; clicking `Check now` briefly shows `Checking…` and returns to `Up to date (1.0)`. If it instead reads `Update available: 1.0.0`, the zero-padding in `AppVersion` is broken - see Task 4's Gotcha. - Proxy: `UpdateStatusTextTests` (Task 7, 6 assertions) pins every one of those strings character for character, and `UpdateCheckerTests.testMatchingTagIsUpToDate` (Task 5) pins that the live `v1.0.0` tag resolves to `.upToDate` against the shipped `1.0`; together they prove everything except the rendering.
+- [ ] 👤 Human: with the app still running from the previous step, click the menu bar icon and read the dropdown, then open **Settings → General**, then quit the app from the dropdown's Quit button and restore the config with `mv ~/.remaindr.e2e-backup ~/.remaindr 2>/dev/null || true` - Expected: the dropdown shows the three provider rows with **no** update line (the app is current), and Settings shows an `Updates` row reading `Up to date (1.0)` beside a `Check now` button; clicking `Check now` briefly shows `Checking…` and returns to `Up to date (1.0)`. If it instead reads `Update available: 1.0.0`, the zero-padding in `AppVersion` is broken - see Task 4's Gotcha. Afterwards `python3 -c "import json;print(sorted(json.load(open('$HOME/.remaindr'))))"` (run before the restore) must list `lastUpdateCheckAt`, proving the check really fired on first dropdown open and the throttle persisted. - Proxy: `UpdateStatusTextTests` (Task 7, 6 assertions) pins every one of those strings character for character, and `UpdateCheckerTests.testMatchingTagIsUpToDate` (Task 5) pins that the live `v1.0.0` tag resolves to `.upToDate` against the shipped `1.0`; together they prove everything except the rendering.
 - [ ] 👤 Human: on a machine with a Developer ID Application certificate installed and a stored notary profile, run `NOTARY_PROFILE=<profile> REQUIRE_NOTARIZATION=1 ./make-dmg.sh`, then on a *second* Mac that has never seen this build, download the DMG and its sidecar and run `shasum -a 256 -c Remaindr-<version>.dmg.sha256` followed by `spctl --assess --type open --context context:primary-signature -vv Remaindr-<version>.dmg` - Expected: the script prints `Notarized: yes, ticket stapled` and exits 0; `stapler validate` and the in-script `spctl` both pass; on the second Mac the checksum reports `OK`, `spctl` reports `accepted` with `source=Notarized Developer ID`, and the DMG opens with a plain double-click and no Gatekeeper prompt. **This is the only unverifiable-by-agent item in the plan** - Preflight records that this machine holds zero code-signing identities, so no agent can reach the Accepted branch. - Proxy: Task 1 Step 5 proves the gate rejects a run that cannot notarize; Task 1 Step 4 and Task 2 Step 3 prove the script parses; Task 2 Steps 4-5 prove the sidecar is produced, correctly formatted, and self-verifying on the ad-hoc path, which is byte-identical machinery to the notarized path apart from the signature. Everything except Apple's own verdict is covered.
