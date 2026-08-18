@@ -547,5 +547,9 @@ Before the merge, the reversal is `git push origin --delete ci/github-actions` a
 
 ## End-to-end verification
 
+Run after the Task 3 merge, against the CI run the merge push itself triggered on main.
+
+- [ ] Run: `gh run list --branch main --limit 1 --json databaseId --jq '.[0].databaseId'` - Expected: prints a numeric run id.
+- [ ] Run: `gh run watch <run-id> --exit-status` (id from the previous item; if the list was empty, GitHub had not registered the run yet - wait a few seconds and re-run) - Expected: exits 0.
 - [ ] Run: `gh run list --branch main --limit 1 --json workflowName,conclusion --jq '.[0]'` - Expected: `{"conclusion":"success","workflowName":"CI"}`, proving the merge push on main triggered the workflow and it passed with the zero-warning gates on.
-- [ ] Run: `gh run view <run-id> --json jobs --jq '.jobs[].steps[] | "\(.name): \(.conclusion)"'` (run id from `gh run list --branch main --limit 1`) - Expected: four lines, including `Build (Release, warnings as errors): success` and `Test (warnings as errors): success`.
+- [ ] Run: `gh run view <run-id> --json jobs --jq '.jobs[].steps[] | "\(.name): \(.conclusion)"'` (run id from the first item) - Expected: four lines, including `Build (Release, warnings as errors): success` and `Test (warnings as errors): success`.
