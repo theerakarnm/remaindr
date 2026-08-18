@@ -984,15 +984,15 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 
 **Steps:**
 
-- [ ] Step 1: In `Remaindr/Remaindr/Models/Preferences.swift`, add the field to `ConfigFile` (last member, after `keychainAccessibilityUpgraded`):
+- [x] Step 1: In `Remaindr/Remaindr/Models/Preferences.swift`, add the field to `ConfigFile` (last member, after `keychainAccessibilityUpgraded`):
       ```swift
               var lastUpdateCheckAt: Double?
       ```
-- [ ] Step 2: In the same file's `private init(store:)`, add one line after the existing `self.keychainAccessibilityUpgraded = ...` assignment:
+- [x] Step 2: In the same file's `private init(store:)`, add one line after the existing `self.keychainAccessibilityUpgraded = ...` assignment:
       ```swift
               self.lastUpdateCheck = loaded?.lastUpdateCheckAt.map(Date.init(timeIntervalSince1970:))
       ```
-- [ ] Step 3: Add the stored property immediately after `keychainAccessibilityUpgraded`'s closing brace and before `private func persist()`:
+- [x] Step 3: Add the stored property immediately after `keychainAccessibilityUpgraded`'s closing brace and before `private func persist()`:
       ```swift
           /// When the update check last completed a network round trip, successful or not.
           /// Non-secret, like every other field here. Stored as epoch seconds so the dotfile
@@ -1001,7 +1001,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
               didSet { persist() }
           }
       ```
-- [ ] Step 4: Extend `persist()` with the new argument, keeping the existing alignment:
+- [x] Step 4: Extend `persist()` with the new argument, keeping the existing alignment:
       ```swift
           private func persist() {
               store.save(ConfigFile(refreshIntervalMinutes: refreshIntervalMinutes,
@@ -1011,7 +1011,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
                                      lastUpdateCheckAt: lastUpdateCheck?.timeIntervalSince1970))
           }
       ```
-- [ ] Step 5: Create `Remaindr/Remaindr/Update/UpdateStore.swift`:
+- [x] Step 5: Create `Remaindr/Remaindr/Update/UpdateStore.swift`:
       ```swift
       import Foundation
 
@@ -1076,9 +1076,10 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
           }
       }
       ```
-- [ ] Step 6: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -20` - Expected: `** TEST SUCCEEDED **` and `Executed 21 tests, with 0 failures` - unchanged from Task 5, because this task adds behaviour but no test. A *warning* here is a failure: strict concurrency must accept `UpdateStore` as written.
-- [ ] Step 7: Verify - Run: `grep -rnw "ConfigFile" Remaindr/ --include=*.swift` - Expected: matches only inside `Remaindr/Remaindr/Models/Preferences.swift` (lines 12, 19, 25, 67 after this edit), confirming the Codable struct still has exactly one consumer and that no hand-built fixture elsewhere broke. `-w` is required: without it the unrelated `ConfigFileStore` type in `Models/ConfigFileStore.swift:6` matches on the substring and the result reads as drift.
-- [ ] Step 8: Commit - `git commit -m "feat: add UpdateStore with a once-a-day throttle persisted in Preferences"`
+- [x] Step 6: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -20` - Expected: `** TEST SUCCEEDED **` and `Executed 21 tests, with 0 failures` - unchanged from Task 5, because this task adds behaviour but no test. A *warning* here is a failure: strict concurrency must accept `UpdateStore` as written.
+- [x] Step 7: Verify - Run: `grep -rnw "ConfigFile" Remaindr/ --include=*.swift` - Expected: matches only inside `Remaindr/Remaindr/Models/Preferences.swift` (lines 12, 19, 25, 67 after this edit), confirming the Codable struct still has exactly one consumer and that no hand-built fixture elsewhere broke. `-w` is required: without it the unrelated `ConfigFileStore` type in `Models/ConfigFileStore.swift:6` matches on the substring and the result reads as drift.
+  > Deviation: line-number hint drifted - the grep matched Preferences.swift:12,20,26,76 rather than the predicted 12,19,25,67. The Expected's substance ('matches only inside Preferences.swift', no out-of-file drift) holds exactly; the parenthetical numbers were computed before the four additions above shifted them.
+- [x] Step 8: Commit - `git commit -m "feat: add UpdateStore with a once-a-day throttle persisted in Preferences"`
 
 ---
 

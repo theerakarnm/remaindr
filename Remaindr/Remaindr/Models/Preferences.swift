@@ -14,6 +14,7 @@ final class Preferences {
         var menuBarProvider: String?
         var allowBilledClaudeProbe: Bool?
         var keychainAccessibilityUpgraded: Bool?
+        var lastUpdateCheckAt: Double?
     }
 
     private let store: ConfigFileStore<ConfigFile>
@@ -30,6 +31,7 @@ final class Preferences {
         self.menuBarProvider = loaded?.menuBarProvider.flatMap(ProviderKind.init(rawValue:)) ?? .claude
         self.allowBilledClaudeProbe = loaded?.allowBilledClaudeProbe ?? false
         self.keychainAccessibilityUpgraded = loaded?.keychainAccessibilityUpgraded ?? false
+        self.lastUpdateCheck = loaded?.lastUpdateCheckAt.map(Date.init(timeIntervalSince1970:))
     }
 
     /// Clamped to the 1...60 range the brief specifies.
@@ -63,10 +65,18 @@ final class Preferences {
         didSet { persist() }
     }
 
+    /// When the update check last completed a network round trip, successful or not.
+    /// Non-secret, like every other field here. Stored as epoch seconds so the dotfile
+    /// stays readable and independent of any date-encoding strategy.
+    var lastUpdateCheck: Date? {
+        didSet { persist() }
+    }
+
     private func persist() {
         store.save(ConfigFile(refreshIntervalMinutes: refreshIntervalMinutes,
                                menuBarProvider: menuBarProvider.rawValue,
                                allowBilledClaudeProbe: allowBilledClaudeProbe,
-                               keychainAccessibilityUpgraded: keychainAccessibilityUpgraded))
+                               keychainAccessibilityUpgraded: keychainAccessibilityUpgraded,
+                               lastUpdateCheckAt: lastUpdateCheck?.timeIntervalSince1970))
     }
 }
