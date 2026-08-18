@@ -14,10 +14,10 @@ Ground rules that still apply to every item below (see `AGENTS.md`):
 ## Distribution & trust
 
 - [ ] Developer ID signed Release builds so keychain grants survive updates and `get-task-allow` never ships (audit F-01; blocked on obtaining a signing identity).
-- [ ] Notarize and staple the DMG in `make-dmg.sh`, then remove the Gatekeeper-bypass wording from the README (audit F-02).
-- [ ] Publish SHA-256 checksums alongside each release download.
+- [x] Notarize and staple the DMG in `make-dmg.sh`, then remove the Gatekeeper-bypass wording from the README (audit F-02).
+- [x] Publish SHA-256 checksums alongside each release download.
 - [ ] Design and ship a real app icon asset catalog (menu bar glyph plus Settings window icon).
-- [ ] First-party update checker (version check against the latest GitHub release; must not grow into a third-party framework).
+- [x] First-party update checker (version check against the latest GitHub release; must not grow into a third-party framework).
 
 ## Providers
 

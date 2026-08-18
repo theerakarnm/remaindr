@@ -1281,20 +1281,20 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 
 **Steps:**
 
-- [ ] Step 1: In `FUTURE_FEATURES.md`, change the `- [ ]` marker to `- [x]` on exactly the three lines that begin with the following text, leaving the rest of each line byte-identical:
+- [x] Step 1: In `FUTURE_FEATURES.md`, change the `- [ ]` marker to `- [x]` on exactly the three lines that begin with the following text, leaving the rest of each line byte-identical:
       1. "Notarize and staple the DMG in" (~L18)
       2. "Publish SHA-256 checksums alongside each release download." (~L19)
       3. "First-party update checker (version check against the latest GitHub release" (~L21)
       Do NOT touch the "Developer ID signed Release builds" line (~L17) or any other checkbox in the file.
-- [ ] Step 2: In `README.md` "## Features", add one bullet immediately before the `Zero third-party dependencies` bullet:
+- [x] Step 2: In `README.md` "## Features", add one bullet immediately before the `Zero third-party dependencies` bullet:
       ```markdown
       - 🆕 **Update check** — compares the running version against the latest GitHub release once a day and links to the release page; it never downloads or installs anything
       ```
-- [ ] Step 3: In `README.md` "## Privacy & security", add one bullet after the existing "No usage data, keys, or telemetry..." bullet:
+- [x] Step 3: In `README.md` "## Privacy & security", add one bullet after the existing "No usage data, keys, or telemetry..." bullet:
       ```markdown
       - The update check is a single unauthenticated `GET` to `api.github.com` that sends no key, no identifier, and no usage data; the download link it shows is a fixed URL compiled into the app, never one read out of the response.
       ```
-- [ ] Step 4: In `README.md` "## Project structure", add the new group to the tree, after the `Keychain/` entry:
+- [x] Step 4: In `README.md` "## Project structure", add the new group to the tree, after the `Keychain/` entry:
       ```
         Update/
           AppVersion.swift      # dotted version parse + compare
@@ -1302,10 +1302,10 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
           UpdateStore.swift     # observable state + once-a-day throttle
           UpdateStatusText.swift # the exact strings the UI renders
       ```
-- [ ] Step 5: Verify - Run: `grep -c "^- \[x\]" FUTURE_FEATURES.md` - Expected: `3`.
-- [ ] Step 6: Verify - Run: `grep -n "Developer ID signed Release builds" FUTURE_FEATURES.md` - Expected: the line is still prefixed `- [ ]`, unticked. Audit F-01 remains blocked on a signing identity.
-- [ ] Step 7: Verify - Run: `grep -c "api.github.com" README.md; grep -c "UpdateChecker.swift" README.md` - Expected: `1`, `1`.
-- [ ] Step 8: Commit - `git commit -m "docs: record the notarization, checksum, and update-checker work"`
+- [x] Step 5: Verify - Run: `grep -c "^- \[x\]" FUTURE_FEATURES.md` - Expected: `3`.
+- [x] Step 6: Verify - Run: `grep -n "Developer ID signed Release builds" FUTURE_FEATURES.md` - Expected: the line is still prefixed `- [ ]`, unticked. Audit F-01 remains blocked on a signing identity.
+- [x] Step 7: Verify - Run: `grep -c "api.github.com" README.md; grep -c "UpdateChecker.swift" README.md` - Expected: `1`, `1`.
+- [x] Step 8: Commit - `git commit -m "docs: record the notarization, checksum, and update-checker work"`
 
 ---
 

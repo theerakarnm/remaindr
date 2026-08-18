@@ -38,6 +38,7 @@ If you're paying for or metering usage across multiple AI providers, checking "h
 - 🔒 **Keychain-backed credentials** — API keys are never stored in plaintext or in `UserDefaults`
 - ⚠️ **Graceful degradation** — if one provider fails or is unconfigured, the other two keep working; failures show a stale value plus an error indicator, never a fake zero
 - 🚀 **Launch at login** — optional
+- 🆕 **Update check** — compares the running version against the latest GitHub release once a day and links to the release page; it never downloads or installs anything
 - 🪶 **Zero third-party dependencies**
 
 ## How each provider is measured
@@ -113,6 +114,7 @@ Providers with no key configured simply show "Not configured" and are skipped on
 
 - API keys are stored exclusively in the macOS Keychain, scoped to this app.
 - No usage data, keys, or telemetry are sent anywhere except directly to each provider's own API, using your own key.
+- The update check is a single unauthenticated `GET` to `api.github.com` that sends no key, no identifier, and no usage data; the download link it shows is a fixed URL compiled into the app, never one read out of the response.
 - Claude's local-log reading only parses token counts and timestamps from `~/.claude/projects/` — it does not read prompt or response content.
 - No analytics, no crash reporting, no third-party SDKs.
 
@@ -130,6 +132,11 @@ Remaindr/
     ProviderStatus.swift  # common status struct returned by every provider
   Keychain/
     KeychainStore.swift   # read/write wrapper, no plaintext fallback
+  Update/
+    AppVersion.swift      # dotted version parse + compare
+    UpdateChecker.swift   # latest GitHub release lookup
+    UpdateStore.swift     # observable state + once-a-day throttle
+    UpdateStatusText.swift # the exact strings the UI renders
   UI/
     MenuBarLabel.swift     # collapsed label view
     DropdownPanel.swift    # per-provider rows
