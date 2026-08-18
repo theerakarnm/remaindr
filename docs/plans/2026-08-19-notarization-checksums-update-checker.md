@@ -22,6 +22,8 @@ The app half adds a new `Update/` group of four small Foundation-first types (`A
 
 **Confidence:** 9/10 - the one unresolved uncertainty is that this machine holds zero code-signing identities, so the *Accepted* branch of the notarization block in Task 1 is reference code no agent can execute here; its failure branches, its syntax, and every other task in the plan are agent-verifiable.
 
+**Validated while planning (not just written):** every Swift file in Tasks 4-8 was applied to a throwaway copy of this repo at `b6a740d` and built - `** TEST SUCCEEDED **`, `Executed 27 tests, with 0 failures`, and `** BUILD SUCCEEDED **` for Release with `SWIFT_TREAT_WARNINGS_AS_ERRORS=YES`, matching the counts each task predicts. The `make-dmg.sh` edits were applied the same way: all three anchors matched exactly, `bash -n` passed, the `REQUIRE_NOTARIZATION=1` gate exited 1 in 0.7s with the quoted message, a full `./make-dmg.sh` run exited 0 and emitted a sidecar matching `^[0-9a-f]{64}  Remaindr-1\.0\.dmg$` that `shasum -c` reported as `OK`, and `hdiutil verify` reported the image VALID. Every `grep` Expected in Tasks 3 and 9 was run against edited copies and returned the stated value. What was NOT validated: the notarized path (no identity), and the two 👤 Human items.
+
 **NOT building:**
 
 - Developer ID signing configuration in `project.pbxproj` (`CODE_SIGN_STYLE`, `DEVELOPMENT_TEAM`, `CODE_SIGN_IDENTITY`). That is audit **F-01**, recorded in `FUTURE_FEATURES.md` as "blocked on obtaining a signing identity", and Preflight confirms no identity exists. `make-dmg.sh:40-50` already discovers a Developer ID identity at runtime and re-signs with it; that stays the mechanism.
