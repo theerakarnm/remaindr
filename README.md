@@ -67,7 +67,9 @@ Claude has no public "remaining subscription quota" API, so its number is an est
 2. Move `Remaindr.app` to `/Applications`.
 3. Launch it — a new icon appears in your menu bar.
 
-> Not notarized/signed yet during early development — macOS Gatekeeper may warn on first launch. Right-click → Open to bypass, or build from source.
+> Early-development builds are not notarized.
+> Prefer building from source (below).
+> If you use a downloaded build, verify its SHA-256 against the checksum published with the release before opening it.
 
 ## Setup
 
@@ -140,7 +142,22 @@ Build must complete with zero warnings — this is enforced project convention, 
 | Claude shows "Not configured" | No `~/.claude/projects/` logs found and no API/admin key set |
 | A provider shows a stale value with a warning icon | Last refresh failed (network, 401, 429) — check the key or your connection |
 | Collapsed label missing | No provider is currently selected to drive it, or all providers are unconfigured |
+| macOS asks for your login keychain password | Expected once per key after installing or updating the app - see below |
 | App doesn't appear in Dock | Expected — this is a menu-bar-only (`LSUIElement`) app by design |
+
+### Why macOS asks for the keychain password
+
+Remaindr reads three keychain items: your z.ai key, your DeepSeek key, and the OAuth
+credential Claude Code already stores. macOS asks you to authorise each item the first
+time a given build of the app reads it. Choose **Always Allow** and that build will not
+ask again.
+
+A release of Remaindr is ad-hoc signed, which means macOS records the grant against
+that exact build rather than against a developer identity. Installing a new version
+therefore asks once more per key. A Developer ID signed build would record the grant
+against the identity instead and never re-ask; that is on the roadmap.
+
+If you are asked repeatedly *within a single run*, that is a bug - please open an issue.
 
 ## Roadmap
 

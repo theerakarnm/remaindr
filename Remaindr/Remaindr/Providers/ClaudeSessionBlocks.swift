@@ -9,8 +9,16 @@ struct ClaudeUsageEntry: Sendable, Equatable {
     let cacheReadTokens: Int
     let outputTokens: Int
 
+    /// Saturates rather than trapping: session files are local input this app
+    /// does not control, and a crashing menu bar app helps nobody.
     var totalTokens: Int {
-        inputTokens + cacheCreationTokens + cacheReadTokens + outputTokens
+        var total = 0
+        for count in [inputTokens, cacheCreationTokens, cacheReadTokens, outputTokens] {
+            let (sum, overflow) = total.addingReportingOverflow(count)
+            if overflow { return Int.max }
+            total = sum
+        }
+        return total
     }
 }
 
@@ -76,7 +84,14 @@ enum ClaudeSessionBlocks {
             if let blockStart = start, let last = previous,
                entry.timestamp.timeIntervalSince(blockStart) < blockDuration,
                entry.timestamp.timeIntervalSince(last) < blockDuration {
-                total += entry.totalTokens
+                let (sum, overflow) = total.addingReportingOverflow(entry.totalTokens)
+                guard !overflow else {
+                    // A total that cannot grow means the entries so far are corrupt
+                    // or hostile; keep the block, skip the entry, never trap.
+                    previous = entry.timestamp
+                    continue
+                }
+                total = sum
                 previous = entry.timestamp
                 continue
             }

@@ -20,6 +20,10 @@ extension UsageProvider {
              .cannotConnectToHost, .dnsLookupFailed, .timedOut, .internationalRoamingOff,
              .dataNotAllowed, .secureConnectionFailed:
             return ProviderError.offline
+        case .cancelled:
+            // The pinning delegate cancels a challenge it cannot trust. A cancelled
+            // task is the scheduler rescheduling mid-refresh, not a pin failure.
+            return Task.isCancelled ? error : ProviderError.untrustedServer
         default:
             return error
         }

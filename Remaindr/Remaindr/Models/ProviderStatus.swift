@@ -48,6 +48,8 @@ enum ProviderError: Error, Equatable, Sendable {
     case malformedResponse(String)
     case serverError(status: Int)
     case noActivePlan
+    /// The server's certificate chain did not match a pinned certificate.
+    case untrustedServer
 
     /// Short text shown next to a stale value. Never contains a key or a token.
     var shortDescription: String {
@@ -59,6 +61,7 @@ enum ProviderError: Error, Equatable, Sendable {
         case .malformedResponse: return "Bad response"
         case .serverError(let status): return "Server error \(status)"
         case .noActivePlan: return "No active plan"
+        case .untrustedServer: return "Connection untrusted"
         }
     }
 }

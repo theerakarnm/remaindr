@@ -13,6 +13,7 @@ final class Preferences {
         var refreshIntervalMinutes: Int?
         var menuBarProvider: String?
         var allowBilledClaudeProbe: Bool?
+        var keychainAccessibilityUpgraded: Bool?
     }
 
     private let store: ConfigFileStore<ConfigFile>
@@ -28,6 +29,7 @@ final class Preferences {
         self.refreshIntervalMinutes = min(max(stored, 1), 60)
         self.menuBarProvider = loaded?.menuBarProvider.flatMap(ProviderKind.init(rawValue:)) ?? .claude
         self.allowBilledClaudeProbe = loaded?.allowBilledClaudeProbe ?? false
+        self.keychainAccessibilityUpgraded = loaded?.keychainAccessibilityUpgraded ?? false
     }
 
     /// Clamped to the 1...60 range the brief specifies.
@@ -54,9 +56,17 @@ final class Preferences {
         didSet { persist() }
     }
 
+    /// True once the one-time Keychain accessibility rewrite has run. macOS does
+    /// not report a stored item's accessibility class, so the rewrite cannot
+    /// detect "already done" and must be gated here instead.
+    var keychainAccessibilityUpgraded: Bool {
+        didSet { persist() }
+    }
+
     private func persist() {
         store.save(ConfigFile(refreshIntervalMinutes: refreshIntervalMinutes,
                                menuBarProvider: menuBarProvider.rawValue,
-                               allowBilledClaudeProbe: allowBilledClaudeProbe))
+                               allowBilledClaudeProbe: allowBilledClaudeProbe,
+                               keychainAccessibilityUpgraded: keychainAccessibilityUpgraded))
     }
 }
