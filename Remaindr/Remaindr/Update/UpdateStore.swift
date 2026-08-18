@@ -29,9 +29,15 @@ final class UpdateStore {
         return latest
     }
 
-    /// Called the first time the dropdown is built. Skips the network entirely when
-    /// the last check is recent. Note this is NOT app launch: `MenuBarExtra(.window)`
-    /// builds its content lazily, so the first check happens on first dropdown open.
+    /// Called when SwiftUI first builds the dropdown content, via that view's `.task`
+    /// - the same hook `scheduler.start()` already uses. Skips the network entirely
+    /// when the last check is recent.
+    ///
+    /// Do not rely on *when* that first build happens. `MenuBarExtra(.window)` decides
+    /// for itself: observed firing immediately at launch on one run and not at all
+    /// across 75s of idling on the next, with the panel never opened either time. The
+    /// throttle is what makes that harmless - whenever the build lands, at launch or on
+    /// first open, at most one check a day results, and "Check now" covers the rest.
     func checkIfDue(now: Date = Date()) async {
         if let last = preferences.lastUpdateCheck,
            now.timeIntervalSince(last) < Self.minimumInterval {
