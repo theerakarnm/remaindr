@@ -122,7 +122,8 @@ Entries record the SHAPE of a fact, never a secret, token, hostname, or third-pa
 Three tasks sit below the treehouse cost floor, so the plan runs sequentially in the main checkout with no lease.
 **Merge order:** sequential - Task 1, then Task 2, then Task 3, in order, on one branch.
 **Shared files:** none.
-**Branch:** `ci/github-actions`, created off 090d214 before Task 1 with `git switch -c ci/github-actions`; Tasks 1 and 2 commit onto it, and Task 3 pushes, verifies, and merges it.
+**Branch:** `ci/github-actions`, created off 090d214 before Task 1 with `git switch -c ci/github-actions`;
+> Deviation: main moved six plan-document-only commits past 090d214 before execution, so the branch was created off main's tip 8ffbabc instead, keeping the plan file (and its ticks) on the branch and in the PR; no source files moved. Tasks 1 and 2 commit onto it, and Task 3 pushes, verifies, and merges it.
 **Teardown:** none - no treehouse lease to return.
 
 ---
@@ -155,7 +156,7 @@ The `build/DerivedData` path the verify writes is already gitignored (`.gitignor
 
 **Steps:**
 
-- [ ] Step 1: In the `PBXFileSystemSynchronizedRootGroup` section, directly after the existing `AA0000000000000000000010 /* Remaindr */ = { ... };` block (just before `/* End PBXFileSystemSynchronizedRootGroup section */`), insert:
+- [x] Step 1: In the `PBXFileSystemSynchronizedRootGroup` section, directly after the existing `AA0000000000000000000010 /* Remaindr */ = { ... };` block (just before `/* End PBXFileSystemSynchronizedRootGroup section */`), insert:
 ```
 		AA0000000000000000000011 /* RemaindrTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
@@ -164,12 +165,12 @@ The `build/DerivedData` path the verify writes is already gitignored (`.gitignor
 		};
 ```
 
-- [ ] Step 2: In the `PBXFileReference` section, directly after the `AA0000000000000000000020 /* Remaindr.app */` line (~L18), insert:
+- [x] Step 2: In the `PBXFileReference` section, directly after the `AA0000000000000000000020 /* Remaindr.app */` line (~L18), insert:
 ```
 		AA0000000000000000000021 /* RemaindrTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RemaindrTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 ```
 
-- [ ] Step 3: In the `PBXFrameworksBuildPhase` section, directly after the `AA0000000000000000000030 /* Frameworks */` block (just before `/* End PBXFrameworksBuildPhase section */`), insert:
+- [x] Step 3: In the `PBXFrameworksBuildPhase` section, directly after the `AA0000000000000000000030 /* Frameworks */` block (just before `/* End PBXFrameworksBuildPhase section */`), insert:
 ```
 		AA0000000000000000000031 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
@@ -180,7 +181,7 @@ The `build/DerivedData` path the verify writes is already gitignored (`.gitignor
 		};
 ```
 
-- [ ] Step 4: In the `PBXGroup` section, make two one-line insertions.
+- [x] Step 4: In the `PBXGroup` section, make two one-line insertions.
 In group `AA0000000000000000000040`'s children, after this existing line:
 ```
 				AA0000000000000000000010 /* Remaindr */,
@@ -198,7 +199,7 @@ insert this line:
 				AA0000000000000000000021 /* RemaindrTests.xctest */,
 ```
 
-- [ ] Step 5: Immediately before `/* Begin PBXNativeTarget section */`, separated from its neighbours by blank lines exactly as the other sections are, insert a new section:
+- [x] Step 5: Immediately before `/* Begin PBXNativeTarget section */`, separated from its neighbours by blank lines exactly as the other sections are, insert a new section:
 ```
 /* Begin PBXContainerItemProxy section */
 		AA00000000000000000000A1 /* PBXContainerItemProxy */ = {
@@ -235,7 +236,7 @@ Then, inside the `PBXNativeTarget` section, directly after the app target's clos
 		};
 ```
 
-- [ ] Step 6: In the `PBXProject` object (anchor: `AA00000000000000000000A0 /* Project object */`), make two insertions.
+- [x] Step 6: In the `PBXProject` object (anchor: `AA00000000000000000000A0 /* Project object */`), make two insertions.
 In the `targets = (` list, after this existing line:
 ```
 				AA0000000000000000000060 /* Remaindr */,
@@ -252,7 +253,7 @@ Inside `TargetAttributes`, after the existing `AA0000000000000000000060 = { Crea
 					};
 ```
 
-- [ ] Step 7: Make four insertions at the stated section boundaries.
+- [x] Step 7: Make four insertions at the stated section boundaries.
 At the top of the `PBXResourcesBuildPhase` section (directly after `/* Begin PBXResourcesBuildPhase section */`), insert:
 ```
 		AA0000000000000000000091 /* Resources */ = {
@@ -329,7 +330,7 @@ And directly before `/* End XCConfigurationList section */`, insert the tests co
 		};
 ```
 
-- [ ] Step 8: In `Remaindr/Remaindr.xcodeproj/xcshareddata/xcschemes/Remaindr.xcscheme`, replace the two lines:
+- [x] Step 8: In `Remaindr/Remaindr.xcodeproj/xcshareddata/xcschemes/Remaindr.xcscheme`, replace the two lines:
 ```
       <Testables>
       </Testables>
@@ -349,7 +350,7 @@ with:
       </Testables>
 ```
 
-- [ ] Step 9: Create `Remaindr/RemaindrTests/CollapsedLabelTextTests.swift` with exactly this content (executed end-to-end in a probe copy on 2026-08-18: 6 tests, 0 failures):
+- [x] Step 9: Create `Remaindr/RemaindrTests/CollapsedLabelTextTests.swift` with exactly this content (executed end-to-end in a probe copy on 2026-08-18: 6 tests, 0 failures):
 ```swift
 import XCTest
 @testable import Remaindr
@@ -420,7 +421,7 @@ final class CollapsedLabelTextTests: XCTestCase {
 ```
 End the file with a trailing newline.
 
-- [ ] Step 10: Verify - Run (from repo root):
+- [x] Step 10: Verify - Run (from repo root):
 ```bash
 plutil -lint Remaindr/Remaindr.xcodeproj/project.pbxproj && \
 xcodebuild -project Remaindr/Remaindr.xcodeproj \
@@ -432,7 +433,7 @@ xcodebuild -project Remaindr/Remaindr.xcodeproj \
 ```
 Expected: `plutil` prints OK; the xcodebuild output ends `** TEST SUCCEEDED **` reporting "Executed 6 tests, with 0 failures"; the chained command exits 0.
 
-- [ ] Step 11: Commit - `git add Remaindr/RemaindrTests/CollapsedLabelTextTests.swift Remaindr/Remaindr.xcodeproj/project.pbxproj Remaindr/Remaindr.xcodeproj/xcshareddata/xcschemes/Remaindr.xcscheme && git commit -m "test: add RemaindrTests target with collapsed-label smoke tests"`
+- [x] Step 11: Commit - `git add Remaindr/RemaindrTests/CollapsedLabelTextTests.swift Remaindr/Remaindr.xcodeproj/project.pbxproj Remaindr/Remaindr.xcodeproj/xcshareddata/xcschemes/Remaindr.xcscheme && git commit -m "test: add RemaindrTests target with collapsed-label smoke tests"`
 
 #### Task 2: Add the GitHub Actions workflow
 
