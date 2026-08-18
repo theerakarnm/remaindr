@@ -84,8 +84,9 @@ Claude has no public "remaining subscription quota" API, so its number is an est
 
 ### Verifying your download
 
-Every release publishes `Remaindr-<version>.dmg` together with `Remaindr-<version>.dmg.sha256`.
-Download both into the same folder, then:
+Every notarized release publishes `Remaindr-<version>.dmg` together with `Remaindr-<version>.dmg.sha256`.
+A release without the sidecar is an un-notarized pre-release: expect Gatekeeper to block its first open, and prefer building from source over installing it.
+For a notarized release, download both into the same folder, then:
 
 ```bash
 shasum -a 256 -c Remaindr-<version>.dmg.sha256
@@ -172,8 +173,12 @@ Build must complete with zero warnings — this is enforced project convention, 
 
 Releases are cut by pushing a version tag; GitHub Actions does everything else.
 The workflow (`.github/workflows/release.yml`) first builds and tests with warnings as errors, the same gate as CI.
-It then runs `make-dmg.sh` with `REQUIRE_NOTARIZATION=1`, so the DMG is Developer ID signed, notarized, stapled, and checksummed before anything is published.
-Finally it publishes `Remaindr-<version>.dmg` and its `.sha256` sidecar to the GitHub release, which is what the in-app update check reads.
+It then runs `make-dmg.sh`, and what gets published depends on whether the signing secrets below are configured.
+
+With signing configured, the DMG is Developer ID signed, notarized, stapled, and checksummed before anything is published, and the release carries `Remaindr-<version>.dmg` together with its `.sha256` sidecar.
+Without signing secrets, the same tag push still publishes the DMG, but as a **pre-release** whose notes say it is un-notarized, and without the sidecar.
+A `.sha256` sidecar therefore stays the marker of a release that went through the full pipeline.
+Marking un-notarized builds as pre-releases also keeps the in-app update check pointing only at notarized releases, because it skips pre-releases just like GitHub's `releases/latest` does.
 
 ```bash
 # Bump MARKETING_VERSION in the Xcode project first; tag and version must match.
@@ -181,12 +186,13 @@ git tag v1.2.3
 git push origin v1.2.3
 ```
 
-The workflow refuses a tag that does not match `MARKETING_VERSION`, and `make-dmg.sh` refuses to finish on any build that is not notarized.
+The workflow refuses a tag that does not match `MARKETING_VERSION`.
+With signing configured it also refuses to finish on any build that is not notarized.
 
 ### One-time setup: repository secrets
 
-Configure five secrets under *Settings → Secrets and variables → Actions*.
-Until they exist, a tag push fails fast at the certificate import step and publishes nothing.
+Configure five secrets under *Settings → Secrets and variables → Actions* to switch tag pushes from un-notarized pre-releases to fully notarized releases.
+Until they exist, the workflow publishes the ad-hoc signed DMG as a pre-release and skips the signing steps entirely.
 
 | Secret | Value |
 | --- | --- |
