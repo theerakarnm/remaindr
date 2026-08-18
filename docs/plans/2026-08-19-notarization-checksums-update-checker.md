@@ -1100,7 +1100,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 
 **Steps:**
 
-- [ ] Step 1: Create `Remaindr/Remaindr/Update/UpdateStatusText.swift`:
+- [x] Step 1: Create `Remaindr/Remaindr/Update/UpdateStatusText.swift`:
       ```swift
       import Foundation
 
@@ -1130,7 +1130,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
           }
       }
       ```
-- [ ] Step 2: Create `Remaindr/RemaindrTests/UpdateStatusTextTests.swift`:
+- [x] Step 2: Create `Remaindr/RemaindrTests/UpdateStatusTextTests.swift`:
       ```swift
       import XCTest
       @testable import Remaindr
@@ -1177,8 +1177,8 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
           }
       }
       ```
-- [ ] Step 3: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -20` - Expected: `** TEST SUCCEEDED **` and `Executed 27 tests, with 0 failures` (21 from Task 5 plus the 6 added here).
-- [ ] Step 4: Commit - `git commit -m "feat: add UpdateStatusText so the update wording is testable without a running app"`
+- [x] Step 3: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -20` - Expected: `** TEST SUCCEEDED **` and `Executed 27 tests, with 0 failures` (21 from Task 5 plus the 6 added here).
+- [x] Step 4: Commit - `git commit -m "feat: add UpdateStatusText so the update wording is testable without a running app"`
 
 ---
 
