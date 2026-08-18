@@ -615,7 +615,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 
 **Steps:**
 
-- [ ] Step 1: Create the directory and `Remaindr/Remaindr/Update/AppVersion.swift`:
+- [x] Step 1: Create the directory and `Remaindr/Remaindr/Update/AppVersion.swift`:
       ```swift
       import Foundation
 
@@ -681,7 +681,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
           }
       }
       ```
-- [ ] Step 2: Create `Remaindr/RemaindrTests/AppVersionTests.swift`:
+- [x] Step 2: Create `Remaindr/RemaindrTests/AppVersionTests.swift`:
       ```swift
       import XCTest
       @testable import Remaindr
@@ -725,9 +725,9 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
           }
       }
       ```
-- [ ] Step 3: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -20` - Expected: `** TEST SUCCEEDED **` and `Executed 11 tests, with 0 failures` (the 6 baseline tests plus the 5 added here).
-- [ ] Step 4: Verify - Run: `git status --short Remaindr/Remaindr.xcodeproj/` - Expected: no output - the file-system-synchronised groups picked the new files up without a project-file edit.
-- [ ] Step 5: Commit - `git commit -m "feat: add AppVersion, a dotted numeric version with zero-padded comparison"`
+- [x] Step 3: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -20` - Expected: `** TEST SUCCEEDED **` and `Executed 11 tests, with 0 failures` (the 6 baseline tests plus the 5 added here).
+- [x] Step 4: Verify - Run: `git status --short Remaindr/Remaindr.xcodeproj/` - Expected: no output - the file-system-synchronised groups picked the new files up without a project-file edit.
+- [x] Step 5: Commit - `git commit -m "feat: add AppVersion, a dotted numeric version with zero-padded comparison"`
 
 ---
 
