@@ -1,8 +1,11 @@
 name: Release
 
-# Publishing a release is fully automated: push a tag like v1.2.3 and this
-# workflow builds, signs, notarizes, staples, checksums, and publishes.
-# The version check below guarantees the tag names the version actually built.
+# Publishing is fully automated: push a tag like v1.2.3 and this workflow
+# builds, tests, packages, and publishes. With the signing secrets configured
+# it also signs, notarizes, and staples; without them it publishes the DMG as
+# a clearly marked un-notarized pre-release with no .sha256 sidecar, because a
+# published sidecar is the marker of a notarized release. The version check
+# below guarantees the tag names the version actually built.
 on:
   push:
     tags:
@@ -21,6 +24,9 @@ jobs:
     timeout-minutes: 45
     env:
       NOTARY_PROFILE: remaindr-notary
+      # 'true' only when every signing/notarization secret is configured.
+      # The two signing steps and the notarization gate below key off it.
+      HAVE_SIGNING: ${{ secrets.MACOS_SIGNING_P12_BASE64 != '' && secrets.MACOS_SIGNING_P12_PASSWORD != '' && secrets.ASC_NOTARY_KEY_P8_BASE64 != '' && secrets.ASC_NOTARY_KEY_ID != '' && secrets.ASC_NOTARY_ISSUER_ID != '' }}
     steps:
       - uses: actions/checkout@v5
 
@@ -58,6 +64,7 @@ jobs:
           SWIFT_TREAT_WARNINGS_AS_ERRORS=YES
 
       - name: Import signing identity
+        if: env.HAVE_SIGNING == 'true'
         env:
           P12_BASE64: ${{ secrets.MACOS_SIGNING_P12_BASE64 }}
           P12_PASSWORD: ${{ secrets.MACOS_SIGNING_P12_PASSWORD }}
@@ -86,6 +93,7 @@ jobs:
           security find-identity -v -p codesigning "$KEYCHAIN_PATH"
 
       - name: Store notarytool credentials
+        if: env.HAVE_SIGNING == 'true'
         env:
           ASC_KEY_P8_BASE64: ${{ secrets.ASC_NOTARY_KEY_P8_BASE64 }}
           ASC_KEY_ID: ${{ secrets.ASC_NOTARY_KEY_ID }}
@@ -105,10 +113,16 @@ jobs:
 
       # All signing, notarization, stapling, spctl assessment, and checksum
       # logic lives in make-dmg.sh - one source of truth for local and CI.
-      - name: Build, notarize, staple, checksum
+      # Without the signing secrets this runs its ad-hoc path, which still
+      # produces a DMG, just an unverified one.
+      - name: Build DMG (notarized when secrets are configured)
         run: |
           set -euo pipefail
-          REQUIRE_NOTARIZATION=1 ./make-dmg.sh
+          if [ "$HAVE_SIGNING" = "true" ]; then
+            REQUIRE_NOTARIZATION=1 ./make-dmg.sh
+          else
+            REQUIRE_NOTARIZATION=0 ./make-dmg.sh
+          fi
 
       - name: Verify artifacts for this version exist
         run: |
@@ -118,8 +132,18 @@ jobs:
           # app, so this is the authoritative tag-to-artifact match, checked
           # after the build rather than in the project file.
           test -f "build/Remaindr-${TAG}.dmg"
-          test -f "build/Remaindr-${TAG}.dmg.sha256"
-          ls -l "build/Remaindr-${TAG}.dmg" "build/Remaindr-${TAG}.dmg.sha256"
+          if [ "$HAVE_SIGNING" = "true" ]; then
+            test -f "build/Remaindr-${TAG}.dmg.sha256"
+            ls -l "build/Remaindr-${TAG}.dmg" "build/Remaindr-${TAG}.dmg.sha256"
+          else
+            # No sidecar is expected on an un-notarized build; publishing one
+            # would forge the notarized-release marker.
+            test ! -e "build/Remaindr-${TAG}.dmg.sha256" || {
+              echo "ERROR: un-notarized build must not ship a .sha256 sidecar." >&2
+              exit 1
+            }
+            ls -l "build/Remaindr-${TAG}.dmg"
+          fi
 
       - name: Publish GitHub release
         env:
@@ -129,15 +153,23 @@ jobs:
           TAG="${GITHUB_REF_NAME#v}"
           DMG="build/Remaindr-${TAG}.dmg"
           SHA="build/Remaindr-${TAG}.dmg.sha256"
+          if [ "$HAVE_SIGNING" = "true" ]; then
+            ASSETS=("$DMG" "$SHA")
+            CREATE_ARGS=(--title "Remaindr $TAG" --generate-notes)
+          else
+            # Un-notarized build: DMG only, no sidecar (a published sidecar is
+            # the marker of a notarized release), and marked pre-release so the
+            # in-app update check and releases/latest never point users at an
+            # unverified binary.
+            ASSETS=("$DMG")
+            CREATE_ARGS=(--title "Remaindr $TAG" --prerelease --notes "Un-notarized build: signing is not configured yet. macOS will block the first open - System Settings > Privacy & Security > Open Anyway. Prefer building from source; see the README.")
+          fi
           # A re-run after a partial failure may have created the release
           # already; republish its assets rather than failing the re-run.
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" --clobber "$DMG" "$SHA"
+            gh release upload "$GITHUB_REF_NAME" --clobber "${ASSETS[@]}"
           else
-            gh release create "$GITHUB_REF_NAME" \
-              --title "Remaindr $TAG" \
-              --generate-notes \
-              "$DMG" "$SHA"
+            gh release create "$GITHUB_REF_NAME" "${CREATE_ARGS[@]}" "${ASSETS[@]}"
           fi
 
       - name: Clean up keychain
