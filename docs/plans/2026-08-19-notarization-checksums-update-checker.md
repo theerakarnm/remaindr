@@ -752,7 +752,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 
 **Steps:**
 
-- [ ] Step 1: Create `Remaindr/Remaindr/Update/UpdateChecker.swift`:
+- [x] Step 1: Create `Remaindr/Remaindr/Update/UpdateChecker.swift`:
       ```swift
       import Foundation
 
@@ -872,7 +872,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
           }
       }
       ```
-- [ ] Step 2: Create `Remaindr/RemaindrTests/UpdateCheckerTests.swift`:
+- [x] Step 2: Create `Remaindr/RemaindrTests/UpdateCheckerTests.swift`:
       ```swift
       import XCTest
       @testable import Remaindr
@@ -953,10 +953,12 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
           }
       }
       ```
-- [ ] Step 3: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -20` - Expected: `** TEST SUCCEEDED **` and `Executed 21 tests, with 0 failures` (6 baseline + 5 from Task 4 + 10 here).
-- [ ] Step 4: Verify - Run: `grep -rn "PinnedSession" Remaindr/Remaindr/Update/; echo "grep_exit=$?"` - Expected: no matching lines and `grep_exit=1`. The update path must never reach the fail-closed pinning session.
-- [ ] Step 5: Verify - Run: `grep -n "html_url" Remaindr/Remaindr/Update/UpdateChecker.swift; echo "grep_exit=$?"` - Expected: no matching lines and `grep_exit=1`. The link is a constant, and `html_url` is not even decoded.
-- [ ] Step 6: Commit - `git commit -m "feat: add UpdateChecker, an unauthenticated GitHub latest-release version check"`
+- [x] Step 3: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -20` - Expected: `** TEST SUCCEEDED **` and `Executed 21 tests, with 0 failures` (6 baseline + 5 from Task 4 + 10 here).
+- [x] Step 4: Verify - Run: `grep -rn "PinnedSession" Remaindr/Remaindr/Update/; echo "grep_exit=$?"` - Expected: no matching lines and `grep_exit=1`. The update path must never reach the fail-closed pinning session.
+  > Deviation: Expected unsatisfiable as written. Step 1's own reference code carries the word `PinnedSession` in a `///` doc comment at UpdateChecker.swift:45 explaining why it is NOT used, so the grep can never return empty. Intent verified instead with `grep -rn "PinnedSession" Remaindr/Remaindr/Update/ | grep -v '^\S*:[0-9]*: *///'` - NO non-comment match. Corroborated: `private let session: URLSession` (:42) and `init(session: URLSession = .shared, ...)` (:50).
+- [x] Step 5: Verify - Run: `grep -n "html_url" Remaindr/Remaindr/Update/UpdateChecker.swift; echo "grep_exit=$?"` - Expected: no matching lines and `grep_exit=1`. The link is a constant, and `html_url` is not even decoded.
+  > Deviation: Expected unsatisfiable as written, same cause - `html_url` appears only in the `///` comment at UpdateChecker.swift:36 justifying the constant link. Intent verified: the decoded `Release` struct declares only `tag_name`, `draft`, `prerelease` (:56-58) and the link is the compile-time constant `releasesPageURL` (:38). No non-comment match.
+- [x] Step 6: Commit - `git commit -m "feat: add UpdateChecker, an unauthenticated GitHub latest-release version check"`
 
 ---
 
