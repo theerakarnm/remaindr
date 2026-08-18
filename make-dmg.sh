@@ -149,7 +149,10 @@ if [ -n "$IDENTITY" ] && [ -n "${NOTARY_PROFILE:-}" ]; then
   NOTARIZED=1
 else
   echo "WARNING: this DMG is NOT notarized (no Developer ID identity and/or no NOTARY_PROFILE)." >&2
-  echo "         Gatekeeper will refuse it on any other Mac. Do not publish it." >&2
+  echo "         Gatekeeper will block its first open on any Mac that did not build it." >&2
+  echo "         It may be published only as a labeled un-notarized pre-release with no" >&2
+  echo "         .sha256 sidecar; the release workflow does exactly that while signing" >&2
+  echo "         secrets are absent." >&2
   echo "         Re-run with both set, and with REQUIRE_NOTARIZATION=1 to make this a hard failure." >&2
 fi
 
@@ -157,9 +160,9 @@ fi
 # 6. Publish the SHA-256 sidecar. Taken AFTER stapling: `stapler staple` rewrites
 #    the image, so a checksum computed before it would not match the download.
 #    The sidecar is written on every path so the checksum machinery stays verifiable on
-#    a machine with no signing identity, but ONLY a notarized run prints the instruction
-#    to upload it: the README makes "ships a .sha256 sidecar" the marker of a release that
-#    came from this pipeline, and an un-notarized build must never be invited to forge it.
+#    a machine with no signing identity, but ONLY a notarized run is told to upload it:
+#    the README makes "ships a .sha256 sidecar" the marker of a release that came from
+#    the full pipeline, and an un-notarized build must never be invited to forge it.
 DMG_NAME=$(basename "$DMG")
 DMG_DIR=$(dirname "$DMG")
 # The subshell cd keeps the bare filename in the sidecar, so a user can verify from
@@ -178,9 +181,11 @@ if [ "$NOTARIZED" = "1" ]; then
   echo ""
   echo "Upload BOTH $DMG_NAME and $DMG_NAME.sha256 to the GitHub release."
 else
-  echo "Notarized: NO - do not publish this build"
+  echo "Notarized: NO"
   echo ""
-  echo "Do NOT upload this DMG or its sidecar. A published .sha256 is the marker of a"
-  echo "notarized release; uploading one from this build would forge that signal."
+  echo "Publish this DMG, if at all, only as a labeled un-notarized pre-release with"
+  echo "no .sha256 sidecar; the release workflow does this automatically. A published"
+  echo "sidecar is the marker of a notarized release; uploading one from this build"
+  echo "would forge that signal."
 fi
 echo "Verify with: hdiutil verify $DMG"
