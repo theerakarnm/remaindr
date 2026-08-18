@@ -68,10 +68,14 @@ Claude has no public "remaining subscription quota" API, so its number is an est
 2. Move `Remaindr.app` to `/Applications`.
 3. Launch it — a new icon appears in your menu bar.
 
-> Release DMGs are signed with a Developer ID certificate, notarized by Apple, and carry a
-> stapled notarization ticket, so they open with an ordinary double-click. There is no
-> Gatekeeper workaround to perform and none is supported: if macOS refuses to open a
-> download, the artifact is wrong, not the warning. Verify it (below), then open an issue.
+> The release pipeline signs the DMG with a Developer ID certificate, has Apple notarize it,
+> and staples the ticket, so a release built through it opens with an ordinary double-click.
+> There is no Gatekeeper workaround to perform and none is supported: if macOS refuses to
+> open such a download, the artifact is wrong, not the warning. Verify it (below), then open
+> an issue.
+>
+> No release has gone through that pipeline yet, because it needs a Developer ID certificate
+> that does not exist yet (see the Roadmap).
 >
 > A release that ships a `.sha256` sidecar came from this pipeline. The older `v1.0.0`
 > asset predates it and is neither notarized nor checksummed - build from source rather
@@ -114,7 +118,7 @@ Providers with no key configured simply show "Not configured" and are skipped on
 
 - API keys are stored exclusively in the macOS Keychain, scoped to this app.
 - No usage data, keys, or telemetry are sent anywhere except directly to each provider's own API, using your own key.
-- The update check is a single unauthenticated `GET` to `api.github.com` that sends no key, no identifier, and no usage data; the download link it shows is a fixed URL compiled into the app, never one read out of the response.
+- The update check is a single unauthenticated `GET` to `api.github.com` that sends no key, no account identifier, and no usage data (only the default `URLSession` user agent, which carries the app and OS version); the download link it shows is a fixed URL compiled into the app, never one read out of the response.
 - Claude's local-log reading only parses token counts and timestamps from `~/.claude/projects/` — it does not read prompt or response content.
 - No analytics, no crash reporting, no third-party SDKs.
 
@@ -180,8 +184,10 @@ credential Claude Code already stores. macOS asks you to authorise each item the
 time a given build of the app reads it. Choose **Always Allow** and that build will not
 ask again.
 
-A published release is signed with a stable Developer ID certificate, so macOS records the
-grant against that identity and updating to a newer release does not ask again.
+Once releases are signed with a stable Developer ID certificate, macOS will record the grant
+against that identity and updating to a newer release will not ask again.
+That is not yet the case: no signing identity exists yet, so nothing published so far is
+Developer ID signed (see the Roadmap).
 A build you compiled yourself is ad-hoc signed, which ties the grant to that exact binary, so
 every local rebuild asks once more per key.
 

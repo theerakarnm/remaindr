@@ -73,7 +73,7 @@ if codesign -d --entitlements - "$APP_PATH" 2>/dev/null | grep -q get-task-allow
 fi
 
 # 2. Stage a clean folder: the .app + an /Applications shortcut
-rm -rf "$DIST" "$DMG"
+rm -rf "$DIST" "$DMG" "$DMG.sha256"
 mkdir -p "$DIST"
 cp -R "$APP_PATH" "$DIST/"
 ln -s /Applications "$DIST/Applications"
@@ -156,6 +156,10 @@ fi
 
 # 6. Publish the SHA-256 sidecar. Taken AFTER stapling: `stapler staple` rewrites
 #    the image, so a checksum computed before it would not match the download.
+#    The sidecar is written on every path so the checksum machinery stays verifiable on
+#    a machine with no signing identity, but ONLY a notarized run prints the instruction
+#    to upload it: the README makes "ships a .sha256 sidecar" the marker of a release that
+#    came from this pipeline, and an un-notarized build must never be invited to forge it.
 DMG_NAME=$(basename "$DMG")
 DMG_DIR=$(dirname "$DMG")
 # The subshell cd keeps the bare filename in the sidecar, so a user can verify from
@@ -171,9 +175,12 @@ echo "Checksum:  $DMG.sha256"
 cat "$DMG.sha256"
 if [ "$NOTARIZED" = "1" ]; then
   echo "Notarized: yes, ticket stapled"
+  echo ""
+  echo "Upload BOTH $DMG_NAME and $DMG_NAME.sha256 to the GitHub release."
 else
   echo "Notarized: NO - do not publish this build"
+  echo ""
+  echo "Do NOT upload this DMG or its sidecar. A published .sha256 is the marker of a"
+  echo "notarized release; uploading one from this build would forge that signal."
 fi
-echo ""
-echo "Upload BOTH $DMG_NAME and $DMG_NAME.sha256 to the GitHub release."
 echo "Verify with: hdiutil verify $DMG"
