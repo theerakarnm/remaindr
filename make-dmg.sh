@@ -153,6 +153,27 @@ else
   echo "         Re-run with both set, and with REQUIRE_NOTARIZATION=1 to make this a hard failure." >&2
 fi
 
+
+# 6. Publish the SHA-256 sidecar. Taken AFTER stapling: `stapler staple` rewrites
+#    the image, so a checksum computed before it would not match the download.
+DMG_NAME=$(basename "$DMG")
+DMG_DIR=$(dirname "$DMG")
+# The subshell cd keeps the bare filename in the sidecar, so a user can verify from
+# whatever folder they downloaded both files into. The `&&` here is deliberate and is
+# NOT the pattern Global Constraints warns about: a failing cd must abort the line,
+# and under set -e the failing subshell aborts the script - which is what is wanted.
+( cd "$DMG_DIR" && shasum -a 256 "$DMG_NAME" > "$DMG_NAME.sha256" )
+( cd "$DMG_DIR" && shasum -a 256 -c "$DMG_NAME.sha256" )
+
 echo ""
-echo "Created: $DMG"
+echo "Created:   $DMG"
+echo "Checksum:  $DMG.sha256"
+cat "$DMG.sha256"
+if [ "$NOTARIZED" = "1" ]; then
+  echo "Notarized: yes, ticket stapled"
+else
+  echo "Notarized: NO - do not publish this build"
+fi
+echo ""
+echo "Upload BOTH $DMG_NAME and $DMG_NAME.sha256 to the GitHub release."
 echo "Verify with: hdiutil verify $DMG"

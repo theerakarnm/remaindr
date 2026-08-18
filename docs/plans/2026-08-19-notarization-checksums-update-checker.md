@@ -500,7 +500,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 
 **Steps:**
 
-- [ ] Step 1: Insert the sidecar step between the step 5 block added in Task 1 and the trailing `echo ""` summary:
+- [x] Step 1: Insert the sidecar step between the step 5 block added in Task 1 and the trailing `echo ""` summary:
       ```bash
 
       # 6. Publish the SHA-256 sidecar. Taken AFTER stapling: `stapler staple` rewrites
@@ -514,7 +514,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
       ( cd "$DMG_DIR" && shasum -a 256 "$DMG_NAME" > "$DMG_NAME.sha256" )
       ( cd "$DMG_DIR" && shasum -a 256 -c "$DMG_NAME.sha256" )
       ```
-- [ ] Step 2: Replace the trailing summary block - today exactly `echo ""`, `echo "Created: $DMG"`, `echo "Verify with: hdiutil verify $DMG"` - with:
+- [x] Step 2: Replace the trailing summary block - today exactly `echo ""`, `echo "Created: $DMG"`, `echo "Verify with: hdiutil verify $DMG"` - with:
       ```bash
       echo ""
       echo "Created:   $DMG"
@@ -529,10 +529,10 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
       echo "Upload BOTH $DMG_NAME and $DMG_NAME.sha256 to the GitHub release."
       echo "Verify with: hdiutil verify $DMG"
       ```
-- [ ] Step 3: Verify - Run: `bash -n make-dmg.sh && echo SYNTAX_OK` - Expected: prints `SYNTAX_OK`, exit 0.
-- [ ] Step 4: Verify - Run: `./make-dmg.sh` (a full ad-hoc Release build plus DMG creation; measured at ~20s while planning, allow a few minutes on a cold DerivedData) - Expected: exit 0; stderr carries the `WARNING: this DMG is NOT notarized` banner; stdout ends with `Notarized: NO - do not publish this build`; and the `shasum -c` line printed `Remaindr-1.0.dmg: OK`.
-- [ ] Step 5: Verify - Run: `(cd build && cat Remaindr-1.0.dmg.sha256 && shasum -a 256 -c Remaindr-1.0.dmg.sha256)` - Expected: the file holds exactly one line matching `^[0-9a-f]{64}  Remaindr-1\.0\.dmg$` (two spaces, bare filename, no `build/` prefix), and the check prints `Remaindr-1.0.dmg: OK`.
-- [ ] Step 6: Verify - Run: `git status --short build/` - Expected: no output - `build/` is git-ignored, so the new artifacts are not about to be committed. If output appears, do NOT `git add` it; report instead.
+- [x] Step 3: Verify - Run: `bash -n make-dmg.sh && echo SYNTAX_OK` - Expected: prints `SYNTAX_OK`, exit 0.
+- [x] Step 4: Verify - Run: `./make-dmg.sh` (a full ad-hoc Release build plus DMG creation; measured at ~20s while planning, allow a few minutes on a cold DerivedData) - Expected: exit 0; stderr carries the `WARNING: this DMG is NOT notarized` banner; stdout ends with `Notarized: NO - do not publish this build`; and the `shasum -c` line printed `Remaindr-1.0.dmg: OK`.
+- [x] Step 5: Verify - Run: `(cd build && cat Remaindr-1.0.dmg.sha256 && shasum -a 256 -c Remaindr-1.0.dmg.sha256)` - Expected: the file holds exactly one line matching `^[0-9a-f]{64}  Remaindr-1\.0\.dmg$` (two spaces, bare filename, no `build/` prefix), and the check prints `Remaindr-1.0.dmg: OK`.
+- [x] Step 6: Verify - Run: `git status --short build/` - Expected: no output - `build/` is git-ignored, so the new artifacts are not about to be committed. If output appears, do NOT `git add` it; report instead.
 - [ ] Step 7: Commit - `git commit -m "build: publish a SHA-256 sidecar alongside the release DMG"`
 
 ---
