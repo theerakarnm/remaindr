@@ -480,7 +480,8 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 - [x] Step 4: Verify - Run: `bash -n make-dmg.sh && echo SYNTAX_OK` - Expected: prints `SYNTAX_OK`, exit 0, no other output.
 - [x] Step 5: Verify - Run: `env -u NOTARY_PROFILE REQUIRE_NOTARIZATION=1 ./make-dmg.sh; echo "exit=$?"` - Expected: exits within ~2 seconds and **before any `xcodebuild` output appears**, printing `exit=1`, with stderr containing `ERROR: REQUIRE_NOTARIZATION=1 but no Developer ID Application identity is available.` This is the reachable half of the notarization gate on a machine with no signing identity (see Preflight); the Accepted path is a Human check in the End-to-end section.
 - [x] Step 6: Verify - Run: `grep -c 'security find-identity' make-dmg.sh` - Expected: `1` - only the hoisted copy remains, the step-1b duplicate is gone.
-- [ ] Step 7: Commit - `git commit -m "build: fail fast when a release run cannot notarize, and assert the notarization verdict"`
+- [x] Step 7: Commit - `git commit -m "build: fail fast when a release run cannot notarize, and assert the notarization verdict"`
+  > Deviation: this repo runs a background auto-commit daemon that committed the task's files under its own generated message ("Update 2 files: major changes") before the plan's commit step ran. Recovered with `git reset --soft <pre-task sha>` followed by the plan's exact commit message; file contents are unaffected. Same recovery applied to every later task.
 
 ---
 
