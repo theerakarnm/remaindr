@@ -529,6 +529,7 @@ Before the merge, the reversal is `git push origin --delete ci/github-actions` a
 - [ ] Step 1: Push the branch, which is itself the first CI trigger event: `git push -u origin ci/github-actions`
 
 - [ ] Step 2: Get the run id: `gh run list --branch ci/github-actions --limit 1` and copy the numeric id of the workflow "CI" run for the branch push.
+If the list is empty, GitHub has not registered the run yet; wait a few seconds and re-run the command - never guess the id.
 
 - [ ] Step 3: Verify - Run: `gh run watch <run-id> --exit-status` (substitute the id from Step 2) - Expected: exits 0; the run named "CI" concludes success with the Build and Test steps green.
 
