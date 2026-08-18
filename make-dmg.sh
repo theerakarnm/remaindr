@@ -19,6 +19,25 @@ LAYOUT_DIR=$(mktemp -d "${TMPDIR:-/tmp}/remaindr-dmg.XXXXXX")
 trap 'rm -rf "$LAYOUT_DIR"' EXIT
 LAYOUT_SCRIPT="$LAYOUT_DIR/layout.applescript"
 
+# 0. Signing preflight, before the build. A release run that cannot notarize
+#    should fail in seconds, not after a full xcodebuild.
+IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | awk '/Developer ID Application/ {print $2; exit}')
+REQUIRE_NOTARIZATION="${REQUIRE_NOTARIZATION:-0}"
+NOTARIZED=0
+
+if [ "$REQUIRE_NOTARIZATION" = "1" ]; then
+  if [ -z "$IDENTITY" ]; then
+    echo "ERROR: REQUIRE_NOTARIZATION=1 but no Developer ID Application identity is available." >&2
+    echo "       Install one from developer.apple.com, or drop REQUIRE_NOTARIZATION for a local ad-hoc build." >&2
+    exit 1
+  fi
+  if [ -z "${NOTARY_PROFILE:-}" ]; then
+    echo "ERROR: REQUIRE_NOTARIZATION=1 but NOTARY_PROFILE is not set." >&2
+    echo "       Store one once with:" >&2
+    echo "         xcrun notarytool store-credentials <name> --apple-id <id> --team-id <team>" >&2
+    exit 1
+  fi
+fi
 # 1. Build the app (must succeed with zero warnings - CI-style)
 xcodebuild -project "$APP_NAME/$APP_NAME.xcodeproj" \
            -scheme "$SCHEME" \
@@ -37,7 +56,7 @@ DMG="build/$APP_NAME-$VERSION.dmg"
 #     entitlements file removes it. With a Developer ID identity present the
 #     same re-sign produces a distributable signature.
 ENTITLEMENTS="$APP_NAME/$APP_NAME/Remaindr.entitlements"
-IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | awk '/Developer ID Application/ {print $2; exit}')
+
 if [ -n "$IDENTITY" ]; then
   codesign --force --deep --options runtime --timestamp \
            --entitlements "$ENTITLEMENTS" --sign "$IDENTITY" "$APP_PATH"
@@ -100,12 +119,38 @@ if [ -f "$LAYOUT_SCRIPT" ]; then
   osascript "$LAYOUT_SCRIPT"
 fi
 
-# 5. Notarize and staple when both a Developer ID identity and a stored notary
-#    profile exist. Store the profile once with:
-#      xcrun notarytool store-credentials NOTARY_PROFILE --apple-id <id> --team-id <team>
+# 5. Sign, notarize, staple, and then prove all three. Stapling is the last write
+#    to the image; the checksum in step 6 is taken after it for exactly that reason.
 if [ -n "$IDENTITY" ] && [ -n "${NOTARY_PROFILE:-}" ]; then
-  xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
+  # The image itself is signed, not just the app inside it: a ticket stapled to an
+  # unsigned image cannot produce a Developer ID assessment.
+  codesign --force --sign "$IDENTITY" --timestamp "$DMG"
+
+  SUBMIT_LOG="$LAYOUT_DIR/notary.txt"
+  if ! xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait | tee "$SUBMIT_LOG"; then
+    echo "ERROR: notarytool submit failed; see the output above." >&2
+    exit 1
+  fi
+  # --wait has historically exited 0 on a rejected submission, so the verdict is
+  # asserted from the output rather than inferred from the exit code.
+  if ! grep -qE '^[[:space:]]*status: Accepted' "$SUBMIT_LOG"; then
+    SUBMISSION_ID=$(awk '/^[[:space:]]*id:/ {print $2; exit}' "$SUBMIT_LOG")
+    echo "ERROR: notarization was not Accepted; this DMG must not be published." >&2
+    if [ -n "$SUBMISSION_ID" ]; then
+      xcrun notarytool log "$SUBMISSION_ID" --keychain-profile "$NOTARY_PROFILE" >&2 || true
+    fi
+    exit 1
+  fi
+
   xcrun stapler staple "$DMG"
+  xcrun stapler validate "$DMG"
+  # Gatekeeper's own verdict on the artifact a user will actually double-click.
+  spctl --assess --type open --context context:primary-signature -vv "$DMG"
+  NOTARIZED=1
+else
+  echo "WARNING: this DMG is NOT notarized (no Developer ID identity and/or no NOTARY_PROFILE)." >&2
+  echo "         Gatekeeper will refuse it on any other Mac. Do not publish it." >&2
+  echo "         Re-run with both set, and with REQUIRE_NOTARIZATION=1 to make this a hard failure." >&2
 fi
 
 echo ""

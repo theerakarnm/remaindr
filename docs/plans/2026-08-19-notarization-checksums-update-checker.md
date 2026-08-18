@@ -404,7 +404,7 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
 
 **Steps:**
 
-- [ ] Step 1: Hoist identity discovery and add the hard gate. Immediately after the `LAYOUT_SCRIPT="$LAYOUT_DIR/layout.applescript"` line (~L20) and before the `# 1. Build the app` comment, insert:
+- [x] Step 1: Hoist identity discovery and add the hard gate. Immediately after the `LAYOUT_SCRIPT="$LAYOUT_DIR/layout.applescript"` line (~L20) and before the `# 1. Build the app` comment, insert:
       ```bash
 
       # 0. Signing preflight, before the build. A release run that cannot notarize
@@ -427,11 +427,11 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
         fi
       fi
       ```
-- [ ] Step 2: Delete the now-duplicated discovery line inside step 1b. Remove exactly this one line (~L40), leaving the `ENTITLEMENTS=` line above it and the `if [ -n "$IDENTITY" ]; then` block below it untouched:
+- [x] Step 2: Delete the now-duplicated discovery line inside step 1b. Remove exactly this one line (~L40), leaving the `ENTITLEMENTS=` line above it and the `if [ -n "$IDENTITY" ]; then` block below it untouched:
       ```bash
       IDENTITY=$(security find-identity -v -p codesigning 2>/dev/null | awk '/Developer ID Application/ {print $2; exit}')
       ```
-- [ ] Step 3: Replace the whole of step 5. Delete these lines (~L103-109):
+- [x] Step 3: Replace the whole of step 5. Delete these lines (~L103-109):
       ```bash
       # 5. Notarize and staple when both a Developer ID identity and a stored notary
       #    profile exist. Store the profile once with:
@@ -477,9 +477,9 @@ Run every command in this section BEFORE Task 1 and report anything that has dri
         echo "         Re-run with both set, and with REQUIRE_NOTARIZATION=1 to make this a hard failure." >&2
       fi
       ```
-- [ ] Step 4: Verify - Run: `bash -n make-dmg.sh && echo SYNTAX_OK` - Expected: prints `SYNTAX_OK`, exit 0, no other output.
-- [ ] Step 5: Verify - Run: `env -u NOTARY_PROFILE REQUIRE_NOTARIZATION=1 ./make-dmg.sh; echo "exit=$?"` - Expected: exits within ~2 seconds and **before any `xcodebuild` output appears**, printing `exit=1`, with stderr containing `ERROR: REQUIRE_NOTARIZATION=1 but no Developer ID Application identity is available.` This is the reachable half of the notarization gate on a machine with no signing identity (see Preflight); the Accepted path is a Human check in the End-to-end section.
-- [ ] Step 6: Verify - Run: `grep -c 'security find-identity' make-dmg.sh` - Expected: `1` - only the hoisted copy remains, the step-1b duplicate is gone.
+- [x] Step 4: Verify - Run: `bash -n make-dmg.sh && echo SYNTAX_OK` - Expected: prints `SYNTAX_OK`, exit 0, no other output.
+- [x] Step 5: Verify - Run: `env -u NOTARY_PROFILE REQUIRE_NOTARIZATION=1 ./make-dmg.sh; echo "exit=$?"` - Expected: exits within ~2 seconds and **before any `xcodebuild` output appears**, printing `exit=1`, with stderr containing `ERROR: REQUIRE_NOTARIZATION=1 but no Developer ID Application identity is available.` This is the reachable half of the notarization gate on a machine with no signing identity (see Preflight); the Accepted path is a Human check in the End-to-end section.
+- [x] Step 6: Verify - Run: `grep -c 'security find-identity' make-dmg.sh` - Expected: `1` - only the hoisted copy remains, the step-1b duplicate is gone.
 - [ ] Step 7: Commit - `git commit -m "build: fail fast when a release run cannot notarize, and assert the notarization verdict"`
 
 ---
