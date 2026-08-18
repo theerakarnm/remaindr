@@ -528,18 +528,18 @@ Before the merge, the reversal is `git push origin --delete ci/github-actions` a
 
 **Steps:**
 
-- [ ] Step 1: Push the branch, which is itself the first CI trigger event: `git push -u origin ci/github-actions`
+- [x] Step 1: Push the branch, which is itself the first CI trigger event: `git push -u origin ci/github-actions`
 
-- [ ] Step 2: Get the run id: `gh run list --branch ci/github-actions --limit 1` and copy the numeric id of the workflow "CI" run for the branch push.
+- [x] Step 2: Get the run id: `gh run list --branch ci/github-actions --limit 1` and copy the numeric id of the workflow "CI" run for the branch push.
 If the list is empty, GitHub has not registered the run yet; wait a few seconds and re-run the command - never guess the id.
 
-- [ ] Step 3: Verify - Run: `gh run watch <run-id> --exit-status` (substitute the id from Step 2) - Expected: exits 0; the run named "CI" concludes success with the Build and Test steps green.
+- [x] Step 3: Verify - Run: `gh run watch <run-id> --exit-status` (substitute the id from Step 2) - Expected: exits 0; the run named "CI" concludes success with the Build and Test steps green.
 
-- [ ] Step 4: Open the PR: `gh pr create --title "ci: GitHub Actions build + test on every push" --body "Adds a RemaindrTests target with collapsed-label smoke tests and a CI workflow that builds Release with zero warnings and runs the tests on every push."`
+- [x] Step 4: Open the PR: `gh pr create --title "ci: GitHub Actions build + test on every push" --body "Adds a RemaindrTests target with collapsed-label smoke tests and a CI workflow that builds Release with zero warnings and runs the tests on every push."`
 
-- [ ] Step 5: Merge with a merge commit, which preserves the per-task commit history and matches how the repo's first PR was merged: `gh pr merge --merge`
+- [x] Step 5: Merge with a merge commit, which preserves the per-task commit history and matches how the repo's first PR was merged: `gh pr merge --merge`
 
-- [ ] Step 6: Sync the local checkout: `git switch main && git pull`
+- [x] Step 6: Sync the local checkout: `git switch main && git pull`
 
 ## Failure handling summary
 
@@ -552,7 +552,7 @@ If the list is empty, GitHub has not registered the run yet; wait a few seconds 
 
 Run after the Task 3 merge, against the CI run the merge push itself triggered on main.
 
-- [ ] Run: `gh run list --branch main --limit 1 --json databaseId --jq '.[0].databaseId'` - Expected: prints a numeric run id.
-- [ ] Run: `gh run watch <run-id> --exit-status` (id from the previous item; if the list was empty, GitHub had not registered the run yet - wait a few seconds and re-run) - Expected: exits 0.
-- [ ] Run: `gh run list --branch main --limit 1 --json workflowName,conclusion --jq '.[0]'` - Expected: `{"conclusion":"success","workflowName":"CI"}`, proving the merge push on main triggered the workflow and it passed with the zero-warning gates on.
-- [ ] Run: `gh run view <run-id> --json jobs --jq '.jobs[].steps[] | "\(.name): \(.conclusion)"'` (run id from the first item) - Expected: four lines, including `Build (Release, warnings as errors): success` and `Test (warnings as errors): success`.
+- [x] Run: `gh run list --branch main --limit 1 --json databaseId --jq '.[0].databaseId'` - Expected: prints a numeric run id.
+- [x] Run: `gh run watch <run-id> --exit-status` (id from the previous item; if the list was empty, GitHub had not registered the run yet - wait a few seconds and re-run) - Expected: exits 0.
+- [x] Run: `gh run list --branch main --limit 1 --json workflowName,conclusion --jq '.[0]'` - Expected: `{"conclusion":"success","workflowName":"CI"}`, proving the merge push on main triggered the workflow and it passed with the zero-warning gates on.
+- [x] Run: `gh run view <run-id> --json jobs --jq '.jobs[].steps[] | "\(.name): \(.conclusion)"'` (run id from the first item) - Expected: four lines, including `Build (Release, warnings as errors): success` and `Test (warnings as errors): success`.
