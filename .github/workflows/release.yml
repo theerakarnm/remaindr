@@ -75,8 +75,10 @@ jobs:
           security import "$CERT_PATH" \
             -k "$KEYCHAIN_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12
           # Prepend (not replace) so the login keychain stays in the search
-          # list; $PREV is unquoted by intent so each path becomes one argument.
+          # list. $PREV is unquoted by intent: each path must arrive as its
+          # own argument.
           PREV=$(security list-keychain -d user | tr -d '"' | tr '\n' ' ')
+          # shellcheck disable=SC2086
           security list-keychain -d user -s "$KEYCHAIN_PATH" $PREV
           security set-key-partition-list -S apple-tool:,apple: \
             -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
@@ -117,7 +119,7 @@ jobs:
           # after the build rather than in the project file.
           test -f "build/Remaindr-${TAG}.dmg"
           test -f "build/Remaindr-${TAG}.dmg.sha256"
-          ls -l build/Remaindr-${TAG}.dmg build/Remaindr-${TAG}.dmg.sha256
+          ls -l "build/Remaindr-${TAG}.dmg" "build/Remaindr-${TAG}.dmg.sha256"
 
       - name: Publish GitHub release
         env:
