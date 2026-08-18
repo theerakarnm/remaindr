@@ -18,6 +18,7 @@ A macOS menu bar utility that shows your remaining usage and balance across thre
 - [Privacy & security](#privacy--security)
 - [Project structure](#project-structure)
 - [Building from source](#building-from-source)
+- [Releasing](#releasing)
 - [Troubleshooting](#troubleshooting)
 - [Roadmap](#roadmap)
 - [Renaming](#renaming)
@@ -166,6 +167,39 @@ xcodebuild -scheme Remaindr build
 ```
 
 Build must complete with zero warnings — this is enforced project convention, not just a suggestion.
+
+## Releasing
+
+Releases are cut by pushing a version tag; GitHub Actions does everything else.
+The workflow (`.github/workflows/release.yml`) first builds and tests with warnings as errors, the same gate as CI.
+It then runs `make-dmg.sh` with `REQUIRE_NOTARIZATION=1`, so the DMG is Developer ID signed, notarized, stapled, and checksummed before anything is published.
+Finally it publishes `Remaindr-<version>.dmg` and its `.sha256` sidecar to the GitHub release, which is what the in-app update check reads.
+
+```bash
+# Bump MARKETING_VERSION in the Xcode project first; tag and version must match.
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+The workflow refuses a tag that does not match `MARKETING_VERSION`, and `make-dmg.sh` refuses to finish on any build that is not notarized.
+
+### One-time setup: repository secrets
+
+Configure five secrets under *Settings → Secrets and variables → Actions*.
+Until they exist, a tag push fails fast at the certificate import step and publishes nothing.
+
+| Secret | Value |
+| --- | --- |
+| `MACOS_SIGNING_P12_BASE64` | Your Developer ID Application identity exported as `.p12`, then base64: `base64 -i identity.p12 \| pbcopy` |
+| `MACOS_SIGNING_P12_PASSWORD` | The password you set on that `.p12` export |
+| `ASC_NOTARY_KEY_P8_BASE64` | An App Store Connect API key (Developer role or higher) `.p8`, then base64: `base64 -i AuthKey_XXXXXXXXXX.p8 \| pbcopy` |
+| `ASC_NOTARY_KEY_ID` | That key's 10-character ID |
+| `ASC_NOTARY_ISSUER_ID` | The issuer UUID shown on the same page |
+
+Export the `.p12` from Keychain Access by selecting the identity under *My Certificates*.
+Make sure the `Developer ID Certification Authority` intermediate is present in the keychain so the exported chain is complete; an incomplete chain makes notarization reject the build.
+
+The signing identity and the notary profile live only in a temporary keychain on an ephemeral runner and are deleted when the job ends.
 
 ## Troubleshooting
 
