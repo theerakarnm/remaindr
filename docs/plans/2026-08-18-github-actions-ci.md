@@ -150,6 +150,7 @@ Three tasks sit below the treehouse cost floor, so the plan runs sequentially in
 **Gotcha:** the pbxproj uses TAB indentation and hand-written ids; every fragment below uses tabs, and the eleven new ids (`...0011`, `...0021`, `...0031`, `...0061`, `...0081`, `...0091`, `...00A1`, `...00B1`, `...0017`, `...002C`, `...002D`) collide with nothing (verified: a grep of all eleven against the file at 090d214 returns 0 hits).
 Do NOT open the project in Xcode and do NOT reformat the pbxproj; Xcode 26 would rewrite the object ids and formatting.
 Apply each insertion literally at the stated anchor; `plutil -lint` is the structural gate before any build.
+The `PBXContainerItemProxy` section lands between `PBXGroup` and `PBXNativeTarget`, out of the file's alphabetical section order; keep it exactly there anyway, because these fragments are the byte-for-byte record of the change that was executed and verified green, and plist object order carries no meaning.
 The `build/DerivedData` path the verify writes is already gitignored (`.gitignore:5`), so the tree stays committable.
 
 **Steps:**
