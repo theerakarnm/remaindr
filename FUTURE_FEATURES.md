@@ -6,7 +6,8 @@ Nothing here is scheduled; pick an item, check it off when shipped, and move its
 
 Ground rules that still apply to every item below (see `AGENTS.md`):
 
-- Credentials live in `~/.remaindr/setting.json` only (0700 directory, 0600 file), never in `UserDefaults`, logs, or commits. The Keychain is read only by the Claude Connect flow.
+- Credentials live in `~/.remaindr/setting.json` only (0700 directory, 0600 file), never in `UserDefaults`, logs, or commits.
+  The Keychain is read only by the Claude Connect flow.
 - The UI talks to providers only through the `UsageProvider` protocol; a new provider must not require UI changes.
 - The collapsed menu bar label stays within roughly 14 characters no matter how many providers are active.
 - No third-party Swift packages; if one seems needed for an item, stop and ask first.

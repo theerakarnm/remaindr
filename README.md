@@ -100,8 +100,10 @@ Delete it and download again rather than opening it.
 ## Setup
 
 1. Click the menu bar icon → **Settings**.
-2. For each provider you want to track, paste the API key. Keys are written to `~/.remaindr/setting.json` (mode 0600, inside a 0700 directory) - nothing is saved until you do this.
-3. For Claude's exact plan-limit numbers, click **Connect** once. macOS may ask for the login keychain password (at most twice); after that the app uses the saved token.
+2. For each provider you want to track, paste the API key.
+   Keys are written to `~/.remaindr/setting.json` (mode 0600, inside a 0700 directory) - nothing is saved until you do this.
+3. For Claude's exact plan-limit numbers, click **Connect** once.
+   macOS may ask for the login keychain password (at most twice); after that the app uses the saved token.
 4. Choose which provider drives the collapsed menu bar label (default: whichever is closest to its limit).
 5. Set your refresh interval (default: 5 minutes).
 6. Optionally enable **Launch at Login**.
@@ -117,7 +119,8 @@ Providers with no key configured simply show "Not configured" and are skipped on
 
 ## Privacy & security
 
-- API keys and the Claude OAuth token are stored in `~/.remaindr/setting.json` only: directory mode 0700, file mode 0600. The trade is explicit: a process running as your user can read that file, where the keychain ACL previously gated reads behind a prompt - accepted in exchange for zero periodic keychain prompts.
+- API keys and the Claude OAuth token are stored in `~/.remaindr/setting.json` only: directory mode 0700, file mode 0600.
+  The trade is explicit: a process running as your user can read that file, where the keychain ACL previously gated reads behind a prompt - accepted in exchange for zero periodic keychain prompts.
 - No usage data, keys, or telemetry are sent anywhere except directly to each provider's own API, using your own key.
 - The update check is a single unauthenticated `GET` to `api.github.com` that sends no key, no account identifier, and no usage data (only the default `URLSession` user agent, which carries the app and OS version); the download link it shows is a fixed URL compiled into the app, never one read out of the response.
 - Claude's local-log reading only parses token counts and timestamps from `~/.claude/projects/` — it does not read prompt or response content.
@@ -151,7 +154,7 @@ Remaindr/
     RefreshScheduler.swift
 ```
 
-See [`CLAUDE.md`](./CLAUDE.md) for the fuller architectural rules this project is built against (provider protocol boundaries, the setting.json credential rule, etc.) — useful context whether you're a human contributor or an AI coding assistant.
+See [`CLAUDE.md`](./CLAUDE.md) for the fuller architectural rules this project is built against (provider protocol boundaries, the setting.json credential rule, etc.) - useful context whether you're a human contributor or an AI coding assistant.
 
 ## Building from source
 

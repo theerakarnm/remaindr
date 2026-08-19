@@ -57,7 +57,9 @@ Every provider client sits behind the `UsageProvider` protocol and returns a com
 
 ## Hard rules
 
-- Credentials (API keys and the Claude OAuth token) live in `~/.remaindr/setting.json` only: directory mode 0700, file mode 0600. Never `UserDefaults`, never logged, never committed. The macOS Keychain is read only by `ClaudeCodeCredential.readAccessToken()` - from the manual Connect action and the single expiry retry, at most twice per connection cycle.
+- Credentials (API keys and the Claude OAuth token) live in `~/.remaindr/setting.json` only: directory mode 0700, file mode 0600.
+  Never `UserDefaults`, never logged, never committed.
+  The macOS Keychain is read only by `ClaudeCodeCredential.readAccessToken()`: at most twice per Connect action, plus at most one automatic re-read per token expiry; a failed re-read locks out further reads until the user clicks Connect again.
 - No third-party Swift packages. If one seems genuinely needed, stop and ask before adding it.
 - One provider failing must never blank or zero out the others. Show a stale value plus a visible error indicator instead.
 - Never invent an endpoint path, field name, or response shape you haven't verified. If you can't verify something, implement it against a clearly marked assumption and flag it rather than guessing silently.

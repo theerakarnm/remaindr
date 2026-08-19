@@ -22,10 +22,12 @@ final class ProviderStore {
         self.slots = Dictionary(uniqueKeysWithValues: ProviderKind.allCases.map { ($0, ProviderSlot()) })
     }
 
-    /// True when at least one provider can produce a reading: any stored key, or a
-    /// readable Claude projects directory.
+    /// True when at least one provider can produce a reading: any stored key, a
+    /// connected Claude account token, or a readable Claude projects directory.
     var anyConfigured: Bool {
         if settings.hasApiKey(for: .zai) || settings.hasApiKey(for: .deepseek) { return true }
+        let oauth = settings.claudeOAuth
+        if oauth.accessToken != nil && !(oauth.invalid ?? false) { return true }
         return FileManager.default.fileExists(atPath: ClaudeProvider.defaultProjectsDirectory.path)
     }
 
