@@ -73,7 +73,7 @@ SOURCE: `Remaindr/Remaindr/Models/Preferences.swift`, anchor `private struct Con
 `SettingFile` in Task 1 copies this all-optional contract verbatim, because `setting.json` must survive being read by an older build and must let each field fall back independently.
 
 ### Concurrency: locked process-wide store
-SOURCE: `Remaindr/Remaindr/Keychain/KeychainStore.swift`, anchor `private final class SecretCache`, ~L12-36
+SOURCE: `Remaindr/Remaindr/Keychain/KeychainStore.swift`, anchor `private final class SecretCache`, ~L20-43
 ```swift
 private final class SecretCache: @unchecked Sendable {
     static let shared = SecretCache()
@@ -90,7 +90,7 @@ private final class SecretCache: @unchecked Sendable {
 `SettingStore` mirrors `SecretCache`: `final class`, `@unchecked Sendable`, one `NSLock` held across the whole read-modify-write cycle, a `static let shared`.
 
 ### Error handling: typed provider errors with UI text
-SOURCE: `Remaindr/Remaindr/Models/ProviderStatus.swift`, anchor `enum ProviderError: Error, Equatable, Sendable`, ~L50-70
+SOURCE: `Remaindr/Remaindr/Models/ProviderStatus.swift`, anchor `enum ProviderError: Error, Equatable, Sendable`, ~L43-67
 ```swift
 enum ProviderError: Error, Equatable, Sendable {
     case notConfigured
@@ -150,6 +150,7 @@ New tests copy this style: no network, no real Keychain, behavior injected as cl
 - [Two orphaned Keychain items exist, accounts `zai` and `deepseek` under service `com.theerakarn.Remaindr`] - Check: `security dump-keychain | grep -c "com.theerakarn.Remaindr"` (attributes only; never add `-w` or `find-generic-password -w` - that reads secret data and prompts) - Needed by: nothing in the code; Task 6's README note tells the user these exist and can be deleted. Planning value: 2.
 - [`Claude Code-credentials` Keychain item exists and was modified recently] - Check: `security find-generic-password -s "Claude Code-credentials" > /dev/null 2>&1 && echo present` (attributes-only query; no secret read, no prompt) - Needed by: the End-to-end Connect check (a Human item). Planning value: present, `mdat` within days of planning, proving Claude Code rotates this item regularly. If absent: the Connect E2E box stays unticked and is reported "awaiting human"; the unit tests in Task 4 still cover the flow.
 - [Xcode toolchain works from this checkout] - Check: `xcodebuild -version` prints `Xcode 26.6` - Needed by: every Verify step. Planning output: `Xcode 26.6, Build version 17F113`.
+- [Shell helpers for the E2E Manual items exist] - Check: `which python3 osascript open` prints three paths - Needed by: End-to-end verification Manual item 2 and both Human proxies. Planning output: `/opt/homebrew/bin/python3` (3.14.3), `/usr/bin/osascript`, `/usr/bin/open`.
 
 ## Execution
 
@@ -343,7 +344,11 @@ The change is one storage-contract migration whose slices share `ProviderStore.s
           /// fields become the first `setting.json` contents. The owner chose "start
           /// fresh" for keys only; settings survive.
           private func migrateDotfileAside() {
-              let legacy = readUnlocked()
+              // Decode BEFORE moving the file: `readUnlocked` reads the directory's
+              // setting.json, a path that cannot exist yet, so it would hand back nil
+              // here and every migrated setting would be lost.
+              let legacy = (try? Data(contentsOf: directoryURL))
+                  .flatMap { try? JSONDecoder().decode(SettingFile.self, from: $0) }
               let aside = home.appendingPathComponent(".remaindr.old")
               try? fileManager.removeItem(at: aside)
               try? fileManager.moveItem(at: directoryURL, to: aside)
@@ -623,6 +628,7 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
       ```
 - [ ] Step 2: In `ClaudeAccountUsage.swift`:
       - Delete `static func accessToken(keychain:)` (its JSON parsing moved into `ClaudeCodeCredential.readAccessToken`).
+      - Delete `static let credentialService` and `enum AccountUsageError` (both dead after this change: `ClaudeCodeCredential.service` replaces the first, and `noCredential` is never thrown once `fetch` takes the token directly - grep confirms their only references are inside this file).
       - Change `fetch` to take the token directly:
       ```swift
       static func fetch(token: String, session: URLSession) async throws -> ClaudeAccountUsage {
@@ -759,6 +765,36 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
       ```
       - Split the current `accountUsageStatus(now:)` into `private func accountUsage(withToken token: String, now: Date) async throws -> ProviderStatus` plus a `private func accountUsageStatus(now: Date) async throws -> ProviderStatus` that reads the stored token, throws when it is absent or flagged invalid, and delegates to `accountUsage(withToken:)`. The recovery path reuses `accountUsage(withToken:)`.
       The `try? then do/catch` pair above is the reference for "untrusted server still surfaces"; the executor may collapse it to a single `do/catch` with an `isUntrusted` helper if the compiler rejects the double call - intent: untrustedServer is NEVER swallowed, every other account error falls through.
+      The two helpers it depends on, written out:
+      ```swift
+      /// Reads the token saved by Connect. Absent or flagged invalid both throw, which
+      /// the caller treats as "account source unavailable, fall through" - never as an
+      /// error for the user (the reconnect-required signal is raised only at the very
+      /// end of fetch, after every source has failed).
+      private func accountUsageStatus(now: Date) async throws -> ProviderStatus {
+          let oauth = settings.claudeOAuth
+          guard let token = oauth.accessToken, !(oauth.invalid ?? false) else {
+              throw ProviderError.notConfigured
+          }
+          return try await accountUsage(withToken: token, now: now)
+      }
+
+      private func accountUsage(withToken token: String, now: Date) async throws -> ProviderStatus {
+          let usage: ClaudeAccountUsage
+          do {
+              usage = try await ClaudeAccountUsage.fetch(token: token, session: session)
+          } catch {
+              throw mapTransportFailure(error)
+          }
+          return ProviderStatus(
+              kind: .claude,
+              reading: .fraction(used: usage.fiveHourUsedFraction, resetsAt: usage.fiveHourResetsAt),
+              detail: "Plan limits reported by claude.ai (same source as Claude Code /usage)",
+              fetchedAt: now,
+              weekly: usage.weekly
+          )
+      }
+      ```
 - [ ] Step 5: In `ProviderStore.swift` `provider(for:)`, change the `.claude` case to:
       ```swift
           case .claude:
@@ -918,7 +954,10 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
           let ok = await ClaudeAccountUsage.connect(
               settings: settings,
               verify: { token in
-                  (try? await ClaudeAccountUsage.fetch(token: token, session: .shared)) != nil
+                  // PinnedSession, not .shared: this request carries the OAuth token,
+                  // and every credential-bearing request must fail closed on a pin
+                  // mismatch (PinnedSession.swift documents the invariant).
+                  (try? await ClaudeAccountUsage.fetch(token: token, session: PinnedSession.shared)) != nil
               })
           reloadClaudeState()
           if !ok {
@@ -967,7 +1006,7 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
 **Files:**
 - Modify: `AGENTS.md` (anchor: `## Hard rules`, ~L60)
 - Modify: `README.md` (anchor: `## Privacy & security`)
-- Modify: `FUTURE_FEATURES.md` (anchor: `## Ground rules`)
+- Modify: `FUTURE_FEATURES.md` (anchor: the paragraph `Ground rules that still apply to every item below (see \`AGENTS.md\`):`, ~L7-9; the rule itself is the bullet at L9)
 - Modify: `SECURITY_AUDIT.md` (anchor: `# SECURITY_AUDIT.md - Security Audit Report`)
 
 **Interfaces:**
@@ -985,15 +1024,21 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
       - Rewrite the Claude provider-data bullet 1 to describe the new lifecycle: Connect reads the Keychain once and saves the token to `setting.json`; refreshes use the saved token; one automatic re-read after a 401; an `invalid` flag stops all automatic reads until the user signs in to Claude Code and clicks Connect again.
       - Keep every sentence on its own line; no em dashes.
 - [ ] Step 2: `README.md`:
+      - Feature bullet at ~L38: "🔒 **Keychain-backed credentials** — API keys are never stored in plaintext or in `UserDefaults`" becomes "🔒 **Config-file credentials** — API keys live in `~/.remaindr/setting.json` (0700 directory, 0600 file), never in `UserDefaults`".
       - Setup step 2 becomes: paste the API key - keys are written to `~/.remaindr/setting.json` (mode 0600, in a 0700 directory).
       - Add a setup step for Claude: click **Connect** once; macOS may ask for the login keychain password (at most twice); after that the app uses the saved token.
       - Privacy & security: replace "API keys are stored exclusively in the macOS Keychain, scoped to this app" with the setting.json policy including the file modes, and state plainly that a process running as your user can read the file - the tradeoff chosen for zero keychain prompts.
-      - Project structure: `Keychain/KeychainStore.swift` line becomes `Keychain/ClaudeCodeCredential.swift  # the one Keychain read (Claude Connect)`; add `Models/SettingStore.swift` under `Models/`.
+      - Project structure: `Keychain/KeychainStore.swift` line becomes `Keychain/ClaudeCodeCredential.swift  # the one Keychain read (Claude Connect)`; add `Models/SettingStore.swift` under `Models/`. The bare `  Keychain/` tree line stays: the directory keeps its name.
+      - The CLAUDE.md pointer sentence at ~L152: "provider protocol boundaries, Keychain-only rule, etc." becomes "provider protocol boundaries, the setting.json credential rule, etc.".
+      - Troubleshooting table row at ~L177: "macOS asks for your login keychain password | Expected once per key after installing or updating the app - see below" becomes "Claude shows Reconnect Claude in Settings | The saved token expired and re-reading it did not help - see below" (replacing the row rather than leaving it pointing at the removed section).
       - Troubleshooting: replace the "Why macOS asks for the keychain password" section with "Claude shows `Reconnect Claude in Settings`" - sign in to Claude Code (run `claude` and log in) so it writes a fresh credential, then click Connect in Remaindr; and add one line: versions before this change stored keys in the login Keychain under service `com.theerakarn.Remaindr`; those items are no longer read and can be deleted in Keychain Access.
-- [ ] Step 3: `FUTURE_FEATURES.md`: change the ground rule "API keys live in the macOS Keychain only, never in `UserDefaults`, plaintext, logs, or commits." to "Credentials live in `~/.remaindr/setting.json` only (0700 directory, 0600 file), never in `UserDefaults`, logs, or commits. The Keychain is read only by the Claude Connect flow."
+- [ ] Step 3: `FUTURE_FEATURES.md`:
+      - Change the ground rule (the bullet at ~L9) "API keys live in the macOS Keychain only, never in `UserDefaults`, plaintext, logs, or commits." to "Credentials live in `~/.remaindr/setting.json` only (0700 directory, 0600 file), never in `UserDefaults`, logs, or commits. The Keychain is read only by the Claude Connect flow."
+      - Item at ~L16: "Developer ID signed Release builds so keychain grants survive updates and `get-task-allow` never ships (audit F-01; blocked on obtaining a signing identity)." becomes "Developer ID signed Release builds so the Connect flow's keychain grant survives updates and `get-task-allow` never ships (audit F-01; blocked on obtaining a signing identity)." - signing is still wanted; only the grant's reason changes.
+      - Item at ~L65: the decision item "stop reading Claude Code's foreign keychain credential in favor of an explicit user-pasted token (audit F-08; deliberately kept because removing it deletes a feature)" is now resolved differently - mark it `[x]` and append "; resolved 2026-08-19: the credential is still read, but only by the manual Connect action and one expiry retry, at most twice per connection cycle."
 - [ ] Step 4: `SECURITY_AUDIT.md`: insert a dated addendum immediately under the title:
       "**Addendum 2026-08-19 (owner decision):** credential storage moved from the login Keychain to `~/.remaindr/setting.json` (directory 0700, file 0600). The threat-model trade is explicit: any process running as the user can now read z.ai/DeepSeek keys and the Claude OAuth token from the file, where the keychain ACL previously gated reads behind a prompt. Accepted in exchange for eliminating all periodic keychain prompts. F-03's remediation (accessibility class) is superseded for this app's own items; F-08 is narrowed - the foreign `Claude Code-credentials` item is still read, but only on the manual Connect action and one expiry retry, at most twice per connection cycle."
-- [ ] Step 5: Verify - Run: `grep -n "Keychain" README.md AGENTS.md FUTURE_FEATURES.md | grep -vi "ClaudeCodeCredential\|Connect\|Keychain Access\|login keychain password\|Keychain is read only\|one Keychain read"` - Expected: no output (every remaining Keychain mention is one of the intended ones).
+- [ ] Step 5: Verify - Run: `grep -n "Keychain" README.md AGENTS.md FUTURE_FEATURES.md | grep -vi "ClaudeCodeCredential\|Connect\|Keychain Access\|login keychain password\|Keychain is read only\|one Keychain read"` - Expected: exactly two output lines, both bare tree lines reading `  Keychain/` (one in AGENTS.md's architecture tree, one in README.md's project structure - the directory keeps its name). Any other line means a Keychain mention survived unedited.
 - [ ] Step 6: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData build SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -2` - Expected: `** BUILD SUCCEEDED **` (docs cannot break the build; this guards against accidental source edits).
 - [ ] Step 7: Commit - `git commit -m "docs: document setting.json credential storage and the Claude Connect flow"`
 
