@@ -568,6 +568,7 @@ The change is one storage-contract migration whose slices share `ProviderStore.s
                                     allowBilledProbe: preferences.allowBilledClaudeProbe)
       ```
       (Verified to typecheck: with this substitution the module compiles clean at the end of Task 3; `KeychainStore` itself survives until Task 5.)
+      > Deviation (post-review, finish phase): `anyConfigured` additionally returns true for a connected, non-invalid Claude OAuth token. Spec-axis code review found that a Connect-only user (no keys, no ~/.claude/projects) would otherwise pause the refresh scheduler, contradicting the plan's Goal line. One condition added; 40-test suite green.
 - [x] Step 4: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData build SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -2` - Expected: `** BUILD SUCCEEDED **` - note: `SettingsView` still uses `KeychainStore` for save/clear badges and still compiles; that migrates in Task 5.
 - [x] Step 5: Verify - Run: same command with `test` - Expected: `** TEST SUCCEEDED **`.
 - [x] Step 6: Commit - `git commit -m "refactor: z.ai and DeepSeek read their keys from setting.json"`
