@@ -1024,7 +1024,7 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
       - Rewrite the Claude provider-data bullet 1 to describe the new lifecycle: Connect reads the Keychain once and saves the token to `setting.json`; refreshes use the saved token; one automatic re-read after a 401; an `invalid` flag stops all automatic reads until the user signs in to Claude Code and clicks Connect again.
       - Keep every sentence on its own line; no em dashes.
 - [ ] Step 2: `README.md`:
-      - Feature bullet at ~L38: "🔒 **Keychain-backed credentials** — API keys are never stored in plaintext or in `UserDefaults`" becomes "🔒 **Config-file credentials** — API keys live in `~/.remaindr/setting.json` (0700 directory, 0600 file), never in `UserDefaults`".
+      - Feature bullet at ~L38, the one starting "🔒 **Keychain-backed credentials**" (its exact current text contains an em dash; match it by this prefix, not by retyping it) becomes: "🔒 **Config-file credentials** - API keys live in `~/.remaindr/setting.json` (0700 directory, 0600 file), never in `UserDefaults`".
       - Setup step 2 becomes: paste the API key - keys are written to `~/.remaindr/setting.json` (mode 0600, in a 0700 directory).
       - Add a setup step for Claude: click **Connect** once; macOS may ask for the login keychain password (at most twice); after that the app uses the saved token.
       - Privacy & security: replace "API keys are stored exclusively in the macOS Keychain, scoped to this app" with the setting.json policy including the file modes, and state plainly that a process running as your user can read the file - the tradeoff chosen for zero keychain prompts.
