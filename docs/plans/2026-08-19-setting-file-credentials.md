@@ -598,7 +598,7 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
 **Gotcha:** `recoverExpiredToken` must compare the fresh Keychain token against the stored one and mark the connection invalid when they are equal - Claude Code has not rotated yet, so retrying would burn a Keychain prompt per refresh interval forever (the exact prompt storm this project already fixed once).
 
 **Steps:**
-- [ ] Step 1: Create `Remaindr/Remaindr/Keychain/ClaudeCodeCredential.swift`:
+- [x] Step 1: Create `Remaindr/Remaindr/Keychain/ClaudeCodeCredential.swift`:
       ```swift
       import Foundation
       import Security
@@ -635,7 +635,7 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
           }
       }
       ```
-- [ ] Step 2: In `ClaudeAccountUsage.swift`:
+- [x] Step 2: In `ClaudeAccountUsage.swift`:
       - Delete `static func accessToken(keychain:)` (its JSON parsing moved into `ClaudeCodeCredential.readAccessToken`).
       - Delete `static let credentialService` and `enum AccountUsageError` (both dead after this change: `ClaudeCodeCredential.service` replaces the first, and `noCredential` is never thrown once `fetch` takes the token directly - grep confirms their only references are inside this file).
       - Change `fetch` to take the token directly:
@@ -702,7 +702,7 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
           settings.setClaudeOAuth(ClaudeOAuthSetting(accessToken: stored.accessToken, invalid: true))
       }
       ```
-- [ ] Step 3: In `ProviderStatus.swift`, add to `ProviderError` (after `case untrustedServer`):
+- [x] Step 3: In `ProviderStatus.swift`, add to `ProviderError` (after `case untrustedServer`):
       ```swift
           /// The saved Claude OAuth token was rejected and re-reading the Keychain did not
           /// help. The user must sign in to Claude Code and click Connect again in Settings.
@@ -720,7 +720,7 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
           /// the OAuth token stored by the Connect action.
       ```
       The property name and values stay unchanged.
-- [ ] Step 4: In `ClaudeProvider.swift`:
+- [x] Step 4: In `ClaudeProvider.swift`:
       - Replace `private let keychain: KeychainStore` with `private let settings: SettingStore` and the initializer with:
       ```swift
       init(settings: SettingStore = .shared,
@@ -801,14 +801,14 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
           )
       }
       ```
-- [ ] Step 5: In `ProviderStore.swift` `provider(for:)`, change the `.claude` case to:
+- [x] Step 5: In `ProviderStore.swift` `provider(for:)`, change the `.claude` case to:
       ```swift
           case .claude:
               return ClaudeProvider(settings: settings,
                                     session: PinnedSession.shared,
                                     allowBilledProbe: preferences.allowBilledClaudeProbe)
       ```
-- [ ] Step 6: Create `Remaindr/RemaindrTests/ClaudeAccountUsageTests.swift`:
+- [x] Step 6: Create `Remaindr/RemaindrTests/ClaudeAccountUsageTests.swift`:
       ```swift
       import XCTest
       @testable import Remaindr
@@ -895,8 +895,9 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
           }
       }
       ```
-- [ ] Step 7: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -3` - Expected: `** TEST SUCCEEDED **` and the aggregate line `Executed 40 tests, with 0 failures` (33 from after Task 1 + 7 new `ClaudeAccountUsageTests`; `tail -3` shows the aggregate, not per-suite names). `SettingsView` still compiles against the not-yet-deleted `KeychainStore`.
-- [ ] Step 8: Commit - `git commit -m "feat: Claude account source connects once, saves the token, and locks out after failed recovery"`
+- [x] Step 7: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -3` - Expected: `** TEST SUCCEEDED **` and the aggregate line `Executed 40 tests, with 0 failures` (33 from after Task 1 + 7 new `ClaudeAccountUsageTests`; `tail -3` shows the aggregate, not per-suite names). `SettingsView` still compiles against the not-yet-deleted `KeychainStore`.
+- [x] Step 8: Commit - `git commit -m "feat: Claude account source connects once, saves the token, and locks out after failed recovery"`
+      > Deviation: auto-committed by the plan watcher before this step could run; verifies green at HEAD. Same pattern as Task 1 Step 4.
 
 #### Task 5: Settings UI on `SettingStore`; `KeychainStore` deleted
 
