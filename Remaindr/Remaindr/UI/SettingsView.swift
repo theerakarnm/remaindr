@@ -5,12 +5,15 @@ struct SettingsView: View {
     let scheduler: RefreshScheduler
     let updateStore: UpdateStore
 
-    private let keychain = KeychainStore()
+    private let settings = SettingStore.shared
 
     @State private var draftKeys: [ProviderKind: String] = [:]
     @State private var savedKinds: Set<ProviderKind> = []
     @State private var launchAtLogin = false
     @State private var message: String?
+    @State private var claudeConnected = false
+    @State private var claudeInvalid = false
+    @State private var isConnectingClaude = false
 
     var body: some View {
         Form {
@@ -40,9 +43,13 @@ struct SettingsView: View {
                     keyRow(kind)
                 }
                 LabeledContent("Claude") {
-                    Text("Reads ~/.claude/projects. No key needed.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    HStack {
+                        claudeBadge
+                        Button(claudeConnected ? "Reconnect" : "Connect") {
+                            Task { await connectClaude() }
+                        }
+                        .disabled(isConnectingClaude)
+                    }
                 }
                 Toggle("Allow a billed API request when no local sessions exist", isOn: Binding(
                     get: { preferences.allowBilledClaudeProbe },
@@ -96,8 +103,58 @@ struct SettingsView: View {
         .frame(width: 460)
         .onAppear {
             launchAtLogin = LoginItem.isEnabled
-            savedKinds = Set(ProviderKind.allCases.filter { keychain.hasKey(for: $0) })
+            savedKinds = Set(ProviderKind.allCases.filter { settings.hasApiKey(for: $0) })
+            reloadClaudeState()
         }
+    }
+
+    @ViewBuilder
+    private var claudeBadge: some View {
+        if claudeInvalid {
+            Label("Invalid token", systemImage: "exclamationmark.triangle.fill")
+                .labelStyle(.iconOnly)
+                .foregroundStyle(.orange)
+                .help("Sign in to Claude Code, then click Connect again")
+        } else if claudeConnected {
+            Label("Connected", systemImage: "checkmark.circle.fill")
+                .labelStyle(.iconOnly)
+                .foregroundStyle(.green)
+                .help("Reading plan limits with the token saved in setting.json")
+        } else {
+            Label("Not connected", systemImage: "circle")
+                .labelStyle(.iconOnly)
+                .foregroundStyle(.secondary)
+                .help("Connect copies Claude Code's sign-in token into setting.json, once")
+        }
+    }
+
+    /// The manual Connect action. Prompts for the login keychain password at most
+    /// twice; on failure the badge turns to "Invalid token" and stays there until
+    /// the user signs in to Claude Code and clicks Connect again.
+    private func connectClaude() async {
+        isConnectingClaude = true
+        defer { isConnectingClaude = false }
+        let ok = await ClaudeAccountUsage.connect(
+            settings: settings,
+            verify: { token in
+                // PinnedSession, not .shared: this request carries the OAuth token,
+                // and every credential-bearing request must fail closed on a pin
+                // mismatch (PinnedSession.swift documents the invariant).
+                (try? await ClaudeAccountUsage.fetch(token: token, session: PinnedSession.shared)) != nil
+            })
+        reloadClaudeState()
+        if !ok {
+            message = "Could not connect. Sign in to Claude Code, then click Connect again."
+        } else {
+            message = nil
+            scheduler.reschedule()
+        }
+    }
+
+    private func reloadClaudeState() {
+        let oauth = settings.claudeOAuth
+        claudeConnected = oauth.accessToken != nil && !(oauth.invalid ?? false)
+        claudeInvalid = oauth.invalid == true && oauth.accessToken != nil
     }
 
     @ViewBuilder
@@ -106,7 +163,7 @@ struct SettingsView: View {
             Label("Set", systemImage: "checkmark.circle.fill")
                 .labelStyle(.iconOnly)
                 .foregroundStyle(.green)
-                .help("\(kind.displayName) key is saved in Keychain")
+                .help("\(kind.displayName) key is saved in setting.json")
         } else {
             Label("Not set", systemImage: "circle")
                 .labelStyle(.iconOnly)
@@ -138,26 +195,18 @@ struct SettingsView: View {
     }
 
     private func save(_ kind: ProviderKind) {
-        do {
-            try keychain.set(draftKeys[kind] ?? "", for: kind)
-            draftKeys[kind] = ""
-            savedKinds = Set(ProviderKind.allCases.filter { keychain.hasKey(for: $0) })
-            scheduler.reschedule()
-            message = nil
-        } catch {
-            message = "Could not save the key to the Keychain."
-        }
+        settings.setApiKey(draftKeys[kind] ?? "", for: kind)
+        draftKeys[kind] = ""
+        savedKinds = Set(ProviderKind.allCases.filter { settings.hasApiKey(for: $0) })
+        scheduler.reschedule()
+        message = nil
     }
 
     private func clear(_ kind: ProviderKind) {
-        do {
-            try keychain.remove(kind)
-            draftKeys[kind] = ""
-            savedKinds = Set(ProviderKind.allCases.filter { keychain.hasKey(for: $0) })
-            scheduler.reschedule()
-            message = nil
-        } catch {
-            message = "Could not clear the key from the Keychain."
-        }
+        settings.setApiKey(nil, for: kind)
+        draftKeys[kind] = ""
+        savedKinds = Set(ProviderKind.allCases.filter { settings.hasApiKey(for: $0) })
+        scheduler.reschedule()
+        message = nil
     }
 }
