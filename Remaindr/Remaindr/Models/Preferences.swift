@@ -1,37 +1,25 @@
 import Foundation
 
-/// Non-secret settings only. API keys live in the Keychain and never appear here.
-/// Backed by a dotfile so settings persist across an app uninstall, same as the
-/// Keychain already does for keys.
+/// Non-secret settings only. Secrets (API keys, the Claude OAuth token) live in the
+/// same setting.json but are accessed through SettingStore's credential accessors,
+/// never through this type.
 @MainActor
 @Observable
 final class Preferences {
-    /// Every field is optional on purpose. `ConfigFileStore.load` decodes with `try?`, so a
-    /// single non-optional field missing from an older file would throw and silently reset
-    /// *all* settings to their defaults. Optional fields let each key fall back on its own.
-    private struct ConfigFile: Codable {
-        var refreshIntervalMinutes: Int?
-        var menuBarProvider: String?
-        var allowBilledClaudeProbe: Bool?
-        var keychainAccessibilityUpgraded: Bool?
-        var lastUpdateCheckAt: Double?
-    }
-
-    private let store: ConfigFileStore<ConfigFile>
+    private let store: SettingStore
 
     convenience init() {
-        self.init(store: ConfigFileStore(fileName: ".remaindr"))
+        self.init(store: .shared)
     }
 
-    private init(store: ConfigFileStore<ConfigFile>) {
+    init(store: SettingStore) {
         self.store = store
         let loaded = store.load()
-        let stored = loaded?.refreshIntervalMinutes ?? 5
+        let stored = loaded.refreshIntervalMinutes ?? 5
         self.refreshIntervalMinutes = min(max(stored, 1), 60)
-        self.menuBarProvider = loaded?.menuBarProvider.flatMap(ProviderKind.init(rawValue:)) ?? .claude
-        self.allowBilledClaudeProbe = loaded?.allowBilledClaudeProbe ?? false
-        self.keychainAccessibilityUpgraded = loaded?.keychainAccessibilityUpgraded ?? false
-        self.lastUpdateCheck = loaded?.lastUpdateCheckAt.map(Date.init(timeIntervalSince1970:))
+        self.menuBarProvider = loaded.menuBarProvider.flatMap(ProviderKind.init(rawValue:)) ?? .claude
+        self.allowBilledClaudeProbe = loaded.allowBilledClaudeProbe ?? false
+        self.lastUpdateCheck = loaded.lastUpdateCheckAt.map(Date.init(timeIntervalSince1970:))
     }
 
     /// Clamped to the 1...60 range the brief specifies.
@@ -58,25 +46,19 @@ final class Preferences {
         didSet { persist() }
     }
 
-    /// True once the one-time Keychain accessibility rewrite has run. macOS does
-    /// not report a stored item's accessibility class, so the rewrite cannot
-    /// detect "already done" and must be gated here instead.
-    var keychainAccessibilityUpgraded: Bool {
-        didSet { persist() }
-    }
-
     /// When the update check last completed a network round trip, successful or not.
-    /// Non-secret, like every other field here. Stored as epoch seconds so the dotfile
+    /// Non-secret, like every other field here. Stored as epoch seconds so the file
     /// stays readable and independent of any date-encoding strategy.
     var lastUpdateCheck: Date? {
         didSet { persist() }
     }
 
     private func persist() {
-        store.save(ConfigFile(refreshIntervalMinutes: refreshIntervalMinutes,
-                               menuBarProvider: menuBarProvider.rawValue,
-                               allowBilledClaudeProbe: allowBilledClaudeProbe,
-                               keychainAccessibilityUpgraded: keychainAccessibilityUpgraded,
-                               lastUpdateCheckAt: lastUpdateCheck?.timeIntervalSince1970))
+        store.mutate { file in
+            file.refreshIntervalMinutes = refreshIntervalMinutes
+            file.menuBarProvider = menuBarProvider.rawValue
+            file.allowBilledClaudeProbe = allowBilledClaudeProbe
+            file.lastUpdateCheckAt = lastUpdateCheck?.timeIntervalSince1970
+        }
     }
 }
