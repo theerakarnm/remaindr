@@ -469,7 +469,7 @@ The change is one storage-contract migration whose slices share `ProviderStore.s
 - Produces (consumed by Task 5 wiring, already existing callers): `Preferences` keeps its public surface (`refreshIntervalMinutes`, `menuBarProvider`, `allowBilledClaudeProbe`, `lastUpdateCheck`) and LOSES `keychainAccessibilityUpgraded` (only consumer is the `RemaindrApp` block this task deletes).
 
 **Steps:**
-- [ ] Step 1: In `Preferences.swift`, replace the `ConfigFile` struct, both initializers, and `persist()` so the class reads and writes through a shared `SettingStore`. Reference implementation of the changed members:
+- [x] Step 1: In `Preferences.swift`, replace the `ConfigFile` struct, both initializers, and `persist()` so the class reads and writes through a shared `SettingStore`. Reference implementation of the changed members:
       ```swift
       /// Non-secret settings only. Secrets (API keys, the Claude OAuth token) live in the
       /// same setting.json but are accessed through SettingStore's credential accessors,
@@ -505,8 +505,8 @@ The change is one storage-contract migration whose slices share `ProviderStore.s
           }
       ```
       Delete the `keychainAccessibilityUpgraded` property and its `didSet`. Keep the doc comments on the surviving properties; update the class doc comment as shown.
-- [ ] Step 2: `git rm Remaindr/Remaindr/Models/ConfigFileStore.swift`.
-- [ ] Step 3: In `RemaindrApp.swift`, delete this block (anchor `if !preferences.keychainAccessibilityUpgraded {`):
+- [x] Step 2: `git rm Remaindr/Remaindr/Models/ConfigFileStore.swift`.
+- [x] Step 3: In `RemaindrApp.swift`, delete this block (anchor `if !preferences.keychainAccessibilityUpgraded {`):
       ```swift
           if !preferences.keychainAccessibilityUpgraded {
               KeychainStore().upgradeAccessibility()
@@ -515,9 +515,10 @@ The change is one storage-contract migration whose slices share `ProviderStore.s
       ```
       leaving `let preferences = Preferences()` followed directly by `let store = ProviderStore(preferences: preferences)`.
       `KeychainStore` itself still exists until Task 5; do not touch it here.
-- [ ] Step 4: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData build SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -2` - Expected: `** BUILD SUCCEEDED **`, zero warnings.
-- [ ] Step 5: Verify - Run: same command with `test` - Expected: `** TEST SUCCEEDED **`, all suites green (no test referenced `Preferences` or `keychainAccessibilityUpgraded`; verified by grep in Preflight).
-- [ ] Step 6: Commit - `git commit -m "refactor: back Preferences with SettingStore and drop the dotfile store"`
+- [x] Step 4: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData build SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -2` - Expected: `** BUILD SUCCEEDED **`, zero warnings.
+- [x] Step 5: Verify - Run: same command with `test` - Expected: `** TEST SUCCEEDED **`, all suites green (no test referenced `Preferences` or `keychainAccessibilityUpgraded`; verified by grep in Preflight).
+- [x] Step 6: Commit - `git commit -m "refactor: back Preferences with SettingStore and drop the dotfile store"`
+      > Deviation: auto-committed by the worktree's plan watcher (e94d7f8 + f40668e) before this step could run; verifies green at HEAD. Same pattern as Task 1 Step 4.
 
 #### Task 3: z.ai and DeepSeek providers read their key from `setting.json`
 
