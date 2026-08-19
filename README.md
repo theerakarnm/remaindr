@@ -82,10 +82,35 @@ Claude has no public "remaining subscription quota" API, so its number is an est
 > asset predates it and is neither notarized nor checksummed - build from source rather
 > than using it.
 
+### Opening an un-notarized build
+
+Every release published so far is an un-notarized pre-release (no `.sha256` sidecar, see
+below) because the Developer ID certificate the signing pipeline needs does not exist yet.
+Gatekeeper will refuse to open one on first launch, and on macOS Sequoia and later that
+dialog has no inline "Open Anyway" button - only a path through **System Settings → Privacy
+& Security**.
+
+An equally valid alternative, and the one many free/open-source Mac apps document for
+exactly this situation, is to strip the quarantine flag Gatekeeper is reacting to before the
+first launch:
+
+```bash
+xattr -cr /Applications/Remaindr.app
+```
+
+Run it once, from Terminal, after moving the app to `/Applications` and before opening it.
+This does not disable Gatekeeper system-wide and does not touch any other app - it removes
+the `com.apple.quarantine` attribute macOS attached to this one download, so Gatekeeper has
+nothing to flag on that binary and no dialog appears at all.
+
+This instruction applies only to un-notarized pre-releases. Once a release goes through the
+notarized pipeline (ships a `.sha256` sidecar), it opens with an ordinary double-click and
+this step is unnecessary - see "Verifying your download" below.
+
 ### Verifying your download
 
 Every notarized release publishes `Remaindr-<version>.dmg` together with `Remaindr-<version>.dmg.sha256`.
-A release without the sidecar is an un-notarized pre-release: expect Gatekeeper to block its first open, and prefer building from source over installing it.
+A release without the sidecar is an un-notarized pre-release: expect Gatekeeper to block its first open - see "Opening an un-notarized build" above for how to run it anyway, or build from source instead.
 For a notarized release, download both into the same folder, then:
 
 ```bash
@@ -221,6 +246,7 @@ The signing identity and the notary profile live only in a temporary keychain on
 | Collapsed label missing | No provider is currently selected to drive it, or all providers are unconfigured |
 | Claude shows Reconnect Claude in Settings | The saved token expired and re-reading it did not help - see below |
 | App doesn't appear in Dock | Expected — this is a menu-bar-only (`LSUIElement`) app by design |
+| "Remaindr" Not Opened / Apple could not verify | Un-notarized pre-release - run `xattr -cr /Applications/Remaindr.app` once, see [Opening an un-notarized build](#opening-an-un-notarized-build) |
 
 ### Reconnecting Claude
 
