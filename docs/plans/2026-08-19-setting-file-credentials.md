@@ -183,7 +183,7 @@ The change is one storage-contract migration whose slices share `ProviderStore.s
 **Gotcha:** `Data.write(to:options:.atomic)` does not reliably carry `attributes` through its temp-file rename on every macOS release, so the mode is set again explicitly after the write; `SettingStoreTests` asserts the final mode, not the write call.
 
 **Steps:**
-- [ ] Step 1: Create `Remaindr/Remaindr/Models/SettingStore.swift` with exactly this content:
+- [x] Step 1: Create `Remaindr/Remaindr/Models/SettingStore.swift` with exactly this content:
       ```swift
       import Foundation
 
@@ -359,7 +359,7 @@ The change is one storage-contract migration whose slices share `ProviderStore.s
           }
       }
       ```
-- [ ] Step 2: Create `Remaindr/RemaindrTests/SettingStoreTests.swift`:
+- [x] Step 2: Create `Remaindr/RemaindrTests/SettingStoreTests.swift`:
       ```swift
       import XCTest
       @testable import Remaindr
