@@ -646,35 +646,43 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
                           readCredential: () -> String? = ClaudeCodeCredential.readAccessToken,
                           verify: @Sendable (String) async -> Bool) async -> Bool {
           guard let first = readCredential() else {
-              markInvalid(settings)
+              markConnectionInvalid(in: settings)
               return false
           }
           settings.setClaudeOAuth(ClaudeOAuthSetting(accessToken: first, invalid: false))
           if await verify(first) { return true }
           guard let second = readCredential() else {
-              markInvalid(settings)
+              markConnectionInvalid(in: settings)
               return false
           }
           settings.setClaudeOAuth(ClaudeOAuthSetting(accessToken: second, invalid: false))
           if await verify(second) { return true }
-          markInvalid(settings)
+          markConnectionInvalid(in: settings)
           return false
       }
 
       /// The one automatic Keychain re-read, run only after the server rejected the
-      /// saved token. A nil return means "give up": no credential, or the same token
-      /// Claude Code has not rotated yet - retrying either would burn a Keychain
-      /// prompt every refresh interval. Callers mark the connection invalid on nil.
+      /// saved token. A nil return means "give up": no credential, the connection is
+      /// already locked out, or the Keychain still holds the same token Claude Code
+      /// has not rotated yet - retrying that would burn a Keychain prompt every
+      /// refresh interval, the exact storm this project fixed once already. Every
+      /// give-up path marks the connection invalid here, so no caller has to remember to.
       static func recoverExpiredToken(settings: SettingStore,
                                       readCredential: () -> String? = ClaudeCodeCredential.readAccessToken) -> String? {
           let stored = settings.claudeOAuth
           guard let oldToken = stored.accessToken, !(stored.invalid ?? false) else { return nil }
-          guard let fresh = readCredential(), fresh != oldToken else { return nil }
+          guard let fresh = readCredential(), fresh != oldToken else {
+              markConnectionInvalid(in: settings)
+              return nil
+          }
           settings.setClaudeOAuth(ClaudeOAuthSetting(accessToken: fresh, invalid: false))
           return fresh
       }
 
-      private static func markInvalid(_ settings: SettingStore) {
+      /// Internal rather than private: `ClaudeProvider` calls it after a recovered
+      /// token is itself rejected by the server - the second failed beg that ends
+      /// the cycle.
+      static func markConnectionInvalid(in settings: SettingStore) {
           let stored = settings.claudeOAuth
           settings.setClaudeOAuth(ClaudeOAuthSetting(accessToken: stored.accessToken, invalid: true))
       }
@@ -729,15 +737,17 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
               // The saved token was rejected. One Keychain re-read, one retry; if
               // either fails the connection is marked invalid and automatic
               // Keychain reads stop until the user clicks Connect again.
-              if let fresh = ClaudeAccountUsage.recoverExpiredToken(settings: settings),
-                 let status = try? await accountUsage(withToken: fresh, now: now) {
-                  return status
+              if let fresh = ClaudeAccountUsage.recoverExpiredToken(settings: settings) {
+                  if let status = try? await accountUsage(withToken: fresh, now: now) {
+                      return status
+                  }
+                  // The rotated token was rejected too: the second failed beg.
+                  ClaudeAccountUsage.markConnectionInvalid(in: settings)
               }
-              ClaudeAccountUsage.markConnectionInvalidPublicly... // see note below
           } catch {
           }
       ```
-      Implementation note (the executor writes it cleanly, this is the intent): after a failed recovery, set the invalid flag via `settings.setClaudeOAuth(ClaudeOAuthSetting(accessToken: settings.claudeOAuth.accessToken, invalid: true))` - to keep `markInvalid` testable and single-sourced, make Task 4's `markInvalid` in `ClaudeAccountUsage` an internal static `static func markConnectionInvalid(in settings: SettingStore)` (rename from the private form in Step 2) and call it from here. Then continue into the existing local-files scan and probe fallback unchanged, except:
+      The recovery marking is single-sourced: `recoverExpiredToken` marks invalid on its own give-up paths (no credential, already locked out, or same unrotated token), and the snippet above marks it when a recovered token is itself rejected. Then continue into the existing local-files scan and probe fallback unchanged, except:
       - The billed-probe guard becomes `guard allowBilledProbe, let key = settings.apiKey(for: kind), !key.isEmpty else`.
       - The final "nothing worked" exit becomes:
       ```swift
@@ -843,7 +853,6 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
           }
       }
       ```
-      Note: `testRecoveryRejectsSameTokenClaudeCodeHasNotRotated` asserts `recoverExpiredToken` itself marks the connection invalid on the same-token case; if the executor implements that marking in the caller instead (as Step 4's flow allows), the assertion moves with it - the observable contract is: after a same-token recovery attempt fails, `store.claudeOAuth.invalid == true` and no further Keychain read happens on later refreshes.
 - [ ] Step 7: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -3` - Expected: `** TEST SUCCEEDED **`; `ClaudeAccountUsageTests` executes 7 tests, 0 failures; all earlier suites still green. `SettingsView` still compiles against the not-yet-deleted `KeychainStore`.
 - [ ] Step 8: Commit - `git commit -m "feat: Claude account source connects once, saves the token, and locks out after failed recovery"`
 
@@ -880,6 +889,7 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
       ```
       and add the supporting members:
       ```swift
+      @ViewBuilder
       private var claudeBadge: some View {
           if claudeInvalid {
               Label("Invalid token", systemImage: "exclamationmark.triangle.fill")
@@ -999,6 +1009,7 @@ Run after all tasks are merged, from the repo root.
 
 - [ ] Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -3` - Expected: `** TEST SUCCEEDED **` with 40 total tests (27 pre-existing + 6 `SettingStoreTests` + 7 `ClaudeAccountUsageTests`), 0 failures.
 - [ ] Manual: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Release -destination 'platform=macOS' -derivedDataPath build/DerivedData build > /dev/null 2>&1 && open build/DerivedData/Build/Products/Release/Remaindr.app && sleep 5 && stat -f '%Sp %N' ~/.remaindr ~/.remaindr/setting.json` - Expected: `drwx------ .../.remaindr` and `-rw------- .../setting.json`; because this machine carries the legacy dotfile, `test -f ~/.remaindr.old && echo migrated` also prints `migrated`, and `python3 -c "import json,os; json.load(open(os.path.expanduser('~/.remaindr/setting.json'))); print('valid json')"` prints `valid json` with the previous refresh interval preserved (check with `python3 -c "import json,os; print(json.load(open(os.path.expanduser('~/.remaindr/setting.json'))).get('refreshIntervalMinutes'))"` - it must equal the pre-launch value from Preflight). Quit the app afterwards (`osascript -e 'quit app "Remaindr"'`).
+  Rollback (runtime, not git): this launch migrates the real `~/.remaindr` dotfile on this machine. To undo by hand, quit the app first, then `rm -rf ~/.remaindr && mv ~/.remaindr.old ~/.remaindr`.
 - [ ] Manual: `grep -c "KeychainStore\|SecretCache" $(find Remaindr/Remaindr -name '*.swift') | grep -v ':0' ; echo "exit=$?"` - Expected: no file lists a nonzero count; `exit=1`.
 - [ ] 👤 Human: open Settings, paste a real z.ai key, click Save - Expected: the z.ai row shows the green "Set" badge, and the dropdown's z.ai row stops saying "Not configured" after a refresh - Proxy: `Remaindr/RemaindrTests/SettingStoreTests.testRoundTripKeepsValuesAcrossInstances` proves the save path, and after the human acts the agent runs `python3 -c "import json,os; print('zai' in json.load(open(os.path.expanduser('~/.remaindr/setting.json'))).get('apiKeys', {}))"` and expects `True` (presence only - the key value is never printed).
-- [ ] 👤 Human: in Settings, click Connect under Claude - Expected: at most one login-keychain password prompt (answer it), then the badge shows "Connected" in green, and the Claude row in the dropdown shows plan-limit percentages again - Proxy: `ClaudeAccountUsageTests` proves the whole connect/retry/invalid state machine without the keychain, and after the human acts the agent runs `python3 -c "import json,os; o=json.load(open(os.path.expanduser('~/.remaindr/setting.json'))).get('claudeOAuth',{}); print(bool(o.get('accessToken')) and not o.get('invalid')))"` and expects `True` (shape only - the token is never printed).
+- [ ] 👤 Human: in Settings, click Connect under Claude - Expected: at most one login-keychain password prompt (answer it), then the badge shows "Connected" in green, and the Claude row in the dropdown shows plan-limit percentages again - Proxy: `ClaudeAccountUsageTests` proves the whole connect/retry/invalid state machine without the keychain, and after the human acts the agent runs `python3 -c "import json,os; o=json.load(open(os.path.expanduser('~/.remaindr/setting.json'))).get('claudeOAuth',{}); print(bool(o.get('accessToken')) and not o.get('invalid'))"` and expects `True` (shape only - the token is never printed).
