@@ -732,9 +732,6 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
           // simply means "fall through", exactly like every other account failure.
           // An untrusted server is the exception: surfacing it is the only way a pin
           // failure becomes visible instead of silently downgrading.
-          if let status = try? await accountUsageStatus(now: now) {
-              return status
-          }
           do {
               return try await accountUsageStatus(now: now)
           } catch ProviderError.untrustedServer {
@@ -764,7 +761,7 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
           throw ProviderError.notConfigured
       ```
       - Split the current `accountUsageStatus(now:)` into `private func accountUsage(withToken token: String, now: Date) async throws -> ProviderStatus` plus a `private func accountUsageStatus(now: Date) async throws -> ProviderStatus` that reads the stored token, throws when it is absent or flagged invalid, and delegates to `accountUsage(withToken:)`. The recovery path reuses `accountUsage(withToken:)`.
-      The `try? then do/catch` pair above is the reference for "untrusted server still surfaces"; the executor may collapse it to a single `do/catch` with an `isUntrusted` helper if the compiler rejects the double call - intent: untrustedServer is NEVER swallowed, every other account error falls through.
+      One `do/catch`, one network call per failing path: `untrustedServer` is rethrown, `unauthorized` runs the single recovery, every other account error falls through to the local-file scan below.
       The two helpers it depends on, written out:
       ```swift
       /// Reads the token saved by Connect. Absent or flagged invalid both throw, which
