@@ -1022,7 +1022,7 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
 - Produces: none.
 
 **Steps:**
-- [ ] Step 1: `AGENTS.md`:
+- [x] Step 1: `AGENTS.md`:
       - Replace the hard rule "API keys live in the macOS Keychain only. Never `UserDefaults`, never plaintext, never logged, never committed." with:
         "Credentials (API keys and the Claude OAuth token) live in `~/.remaindr/setting.json` only: directory mode 0700, file mode 0600. Never `UserDefaults`, never logged, never committed. The macOS Keychain is read only by `ClaudeCodeCredential.readAccessToken()` - from the manual Connect action and the single expiry retry, at most twice per connection cycle."
       - Update the Stack line "Keychain Services (via `Security` framework) for credential storage" to "One `Security` framework call (`ClaudeCodeCredential`) that copies Claude Code's OAuth token into `setting.json` on Connect".
@@ -1031,7 +1031,7 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
     ClaudeCodeCredential.swift  # the one Keychain read (Claude Connect)` and add `Models/SettingStore.swift  # owns ~/.remaindr/setting.json` under `Models/`.
       - Rewrite the Claude provider-data bullet 1 to describe the new lifecycle: Connect reads the Keychain once and saves the token to `setting.json`; refreshes use the saved token; one automatic re-read after a 401; an `invalid` flag stops all automatic reads until the user signs in to Claude Code and clicks Connect again.
       - Keep every sentence on its own line; no em dashes.
-- [ ] Step 2: `README.md`:
+- [x] Step 2: `README.md`:
       - Feature bullet at ~L38, the one starting "🔒 **Keychain-backed credentials**" (its exact current text contains an em dash; match it by this prefix, not by retyping it) becomes: "🔒 **Config-file credentials** - API keys live in `~/.remaindr/setting.json` (0700 directory, 0600 file), never in `UserDefaults`".
       - Setup step 2 becomes: paste the API key - keys are written to `~/.remaindr/setting.json` (mode 0600, in a 0700 directory).
       - Add a setup step for Claude: click **Connect** once; macOS may ask for the login keychain password (at most twice); after that the app uses the saved token.
@@ -1040,15 +1040,17 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
       - The CLAUDE.md pointer sentence at ~L152: "provider protocol boundaries, Keychain-only rule, etc." becomes "provider protocol boundaries, the setting.json credential rule, etc.".
       - Troubleshooting table row at ~L177: "macOS asks for your login keychain password | Expected once per key after installing or updating the app - see below" becomes "Claude shows Reconnect Claude in Settings | The saved token expired and re-reading it did not help - see below" (replacing the row rather than leaving it pointing at the removed section).
       - Troubleshooting: replace the "Why macOS asks for the keychain password" section with "Claude shows `Reconnect Claude in Settings`" - sign in to Claude Code (run `claude` and log in) so it writes a fresh credential, then click Connect in Remaindr; and add one line: versions before this change stored keys in the login Keychain under service `com.theerakarn.Remaindr`; those items are no longer read and can be deleted in Keychain Access.
-- [ ] Step 3: `FUTURE_FEATURES.md`:
+- [x] Step 3: `FUTURE_FEATURES.md`:
       - Change the ground rule (the bullet at ~L9) "API keys live in the macOS Keychain only, never in `UserDefaults`, plaintext, logs, or commits." to "Credentials live in `~/.remaindr/setting.json` only (0700 directory, 0600 file), never in `UserDefaults`, logs, or commits. The Keychain is read only by the Claude Connect flow."
       - Item at ~L16: "Developer ID signed Release builds so keychain grants survive updates and `get-task-allow` never ships (audit F-01; blocked on obtaining a signing identity)." becomes "Developer ID signed Release builds so the Connect flow's keychain grant survives updates and `get-task-allow` never ships (audit F-01; blocked on obtaining a signing identity)." - signing is still wanted; only the grant's reason changes.
       - Item at ~L65: the decision item "stop reading Claude Code's foreign keychain credential in favor of an explicit user-pasted token (audit F-08; deliberately kept because removing it deletes a feature)" is now resolved differently - mark it `[x]` and append "; resolved 2026-08-19: the credential is still read, but only by the manual Connect action and one expiry retry, at most twice per connection cycle."
-- [ ] Step 4: `SECURITY_AUDIT.md`: insert a dated addendum immediately under the title:
+- [x] Step 4: `SECURITY_AUDIT.md`: insert a dated addendum immediately under the title:
       "**Addendum 2026-08-19 (owner decision):** credential storage moved from the login Keychain to `~/.remaindr/setting.json` (directory 0700, file 0600). The threat-model trade is explicit: any process running as the user can now read z.ai/DeepSeek keys and the Claude OAuth token from the file, where the keychain ACL previously gated reads behind a prompt. Accepted in exchange for eliminating all periodic keychain prompts. F-03's remediation (accessibility class) is superseded for this app's own items; F-08 is narrowed - the foreign `Claude Code-credentials` item is still read, but only on the manual Connect action and one expiry retry, at most twice per connection cycle."
-- [ ] Step 5: Verify - Run: `grep -n "Keychain" README.md AGENTS.md FUTURE_FEATURES.md | grep -vi "ClaudeCodeCredential\|Connect\|Keychain Access\|login keychain password\|Keychain is read only\|one Keychain read"` - Expected: every output line is exactly a tree line reading `  Keychain/` (at most two: the AGENTS.md architecture tree and the README.md project structure - the directory keeps its name). Any prose line in the output means a Keychain mention survived unedited: reword that sentence to describe the Connect flow (the intended surviving context) rather than loosening the grep.
-- [ ] Step 6: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData build SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -2` - Expected: `** BUILD SUCCEEDED **` (docs cannot break the build; this guards against accidental source edits).
-- [ ] Step 7: Commit - `git commit -m "docs: document setting.json credential storage and the Claude Connect flow"`
+      > Deviation: first run surfaced two prose lines in the new README section that lacked the Connect context; reworded both per the Expected's instruction (describe the Connect flow, not loosen the grep) and re-ran clean.
+- [x] Step 5: Verify - Run: `grep -n "Keychain" README.md AGENTS.md FUTURE_FEATURES.md | grep -vi "ClaudeCodeCredential\|Connect\|Keychain Access\|login keychain password\|Keychain is read only\|one Keychain read"` - Expected: every output line is exactly a tree line reading `  Keychain/` (at most two: the AGENTS.md architecture tree and the README.md project structure - the directory keeps its name). Any prose line in the output means a Keychain mention survived unedited: reword that sentence to describe the Connect flow (the intended surviving context) rather than loosening the grep.
+- [x] Step 6: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData build SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -2` - Expected: `** BUILD SUCCEEDED **` (docs cannot break the build; this guards against accidental source edits).
+- [x] Step 7: Commit - `git commit -m "docs: document setting.json credential storage and the Claude Connect flow"`
+      > Deviation: auto-committed by the plan watcher before this step could run. Same pattern as Task 1 Step 4.
 
 ## Failure handling summary
 
