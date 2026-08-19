@@ -25,7 +25,7 @@ A stored `invalid` flag ends all automatic Keychain reads until the user signs i
 Every line reference, anchor, and "already exists" claim below describes THIS tree.
 When an anchor does not match, the executor runs `git log --oneline 6d111c3..HEAD` to tell "the plan was wrong" apart from "the file moved on".
 
-**Confidence:** 9/10. Rubric arithmetic: start at 10; every `Consumes:` entry carries a full signature (0); every Patterns-to-Mirror SOURCE was read at its exact lines while planning and copied (0); every `Verify - Human:` has a paired proxy (0); every NOT-building entry that cuts a requirement carries a `file:line` or a direct owner decision (0); the one schema change (`SettingFile`) lists every consumer by task (0); every Preflight command was actually executed while planning (outputs pasted below) (0); no parallel tracks exist (0). One judgement deduction of 1: `SettingStore`'s write path (atomic write plus explicit permission set) is reference code no compiler checks before Task 1 lands, mitigated by the permissions assertions in `SettingStoreTests`.
+**Confidence:** 9/10. Rubric arithmetic: start at 10; every `Consumes:` entry carries a full signature (0); every Patterns-to-Mirror SOURCE was read at its exact lines while planning and copied (0); every `Verify - Human:` has a paired proxy (0); every NOT-building entry that cuts a requirement carries a `file:line` or a direct owner decision (0); the one schema change (`SettingFile`) lists every consumer by task (0); every Preflight command was actually executed while planning (outputs pasted below) (0); no parallel tracks exist (0). One judgement deduction of 1: `SettingStore`'s write path (atomic write plus explicit permission set) is reference code no compiler checks before Task 1 lands, mitigated by the permissions assertions in `SettingStoreTests`. Two compile-level defects in Steps code found by two rounds of independent review (an unused binding that trips warnings-as-errors, and a stale property reference in Task 3) were corrected using fixes the reviewer itself compiled and verified green.
 
 **NOT building:**
 
@@ -146,7 +146,7 @@ New tests copy this style: no network, no real Keychain, behavior injected as cl
 
 ### PERISHABLE - recapture before task 1
 
-- [`~/.remaindr` exists as a FILE on this machine] - Check: `test -f ~/.remaindr && ! test -d ~/.remaindr && echo "legacy dotfile present"` - Needed by: Task 1 (migration path is exercised for real at first launch), End-to-end verification. While planning it printed `legacy dotfile present` and its content was the five non-secret settings fields (`keychainAccessibilityUpgraded` among them); it has never contained a key. If it is absent or already a directory at execution time, the fresh-install path applies and the `.remaindr.old` assertion in End-to-end verification is skipped.
+- [`~/.remaindr` exists as a FILE on this machine] - Check: `test -f ~/.remaindr && ! test -d ~/.remaindr && echo "legacy dotfile present"` - Needed by: Task 1 (migration path is exercised for real at first launch), End-to-end verification. While planning it printed `legacy dotfile present` and its content was the five non-secret settings fields (`keychainAccessibilityUpgraded` among them); it has never contained a key. Note the timing: the tests are hosted (`TEST_HOST` is set in `project.pbxproj`), so from Task 2 onward every `xcodebuild test` launches the app, whose init constructs `SettingStore.shared` and performs the REAL migration of this machine's `~/.remaindr` - expect it to have happened by the end of Task 2's verify, not first at the End-to-end launch. If the check prints nothing because `~/.remaindr` is already a directory with a `setting.json` inside (migration already ran, `.remaindr.old` present), the fresh-install path applies, the settings-preservation assertion reads the value out of `~/.remaindr/setting.json` instead, and the `.remaindr.old` assertion is skipped.
 - [Two orphaned Keychain items exist, accounts `zai` and `deepseek` under service `com.theerakarn.Remaindr`] - Check: `security dump-keychain | grep -c "com.theerakarn.Remaindr"` (attributes only; never add `-w` or `find-generic-password -w` - that reads secret data and prompts) - Needed by: nothing in the code; Task 6's README note tells the user these exist and can be deleted. Planning value: 2.
 - [`Claude Code-credentials` Keychain item exists and was modified recently] - Check: `security find-generic-password -s "Claude Code-credentials" > /dev/null 2>&1 && echo present` (attributes-only query; no secret read, no prompt) - Needed by: the End-to-end Connect check (a Human item). Planning value: present, `mdat` within days of planning, proving Claude Code rotates this item regularly. If absent: the Connect E2E box stays unticked and is reported "awaiting human"; the unit tests in Task 4 still cover the flow.
 - [Xcode toolchain works from this checkout] - Check: `xcodebuild -version` prints `Xcode 26.6` - Needed by: every Verify step. Planning output: `Xcode 26.6, Build version 17F113`.
@@ -453,7 +453,7 @@ The change is one storage-contract migration whose slices share `ProviderStore.s
           }
       }
       ```
-- [x] Step 3: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -3` - Expected: `** TEST SUCCEEDED **` with `SettingStoreTests` in the executed suites (6 new tests) and the pre-existing 27 tests still passing.
+- [x] Step 3: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -3` - Expected: `** TEST SUCCEEDED **` and the aggregate line `Executed 33 tests, with 0 failures` (27 pre-existing + 6 new `SettingStoreTests`; `tail -3` shows the aggregate, not per-suite names).
 - [ ] Step 4: Commit - `git commit -m "feat: add SettingStore owning ~/.remaindr/setting.json with 0700/0600 modes"`
 
 #### Task 2: `Preferences` on `SettingStore`; dotfile store deleted
@@ -558,7 +558,14 @@ The change is one storage-contract migration whose slices share `ProviderStore.s
       ```swift
           if settings.hasApiKey(for: .zai) || settings.hasApiKey(for: .deepseek) { return true }
       ```
-      keeping the `~/.claude/projects` directory check as the fallback return. In `provider(for:)`, construct `.zai` and `.deepseek` with `settings: settings, session: PinnedSession.shared`; leave the `.claude` case untouched this task (it still compiles against `KeychainStore`, which still exists).
+      keeping the `~/.claude/projects` directory check as the fallback return. In `provider(for:)`, construct `.zai` and `.deepseek` with `settings: settings, session: PinnedSession.shared`.
+      The `.claude` case cannot stay untouched: this task renamed the `keychain` property it reads. Its initializer parameter `keychain:` still exists with a default (`KeychainStore()`), so omit it and write:
+      ```swift
+          case .claude:
+              return ClaudeProvider(session: PinnedSession.shared,
+                                    allowBilledProbe: preferences.allowBilledClaudeProbe)
+      ```
+      (Verified to typecheck: with this substitution the module compiles clean at the end of Task 3; `KeychainStore` itself survives until Task 5.)
 - [ ] Step 4: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData build SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -2` - Expected: `** BUILD SUCCEEDED **` - note: `SettingsView` still uses `KeychainStore` for save/clear badges and still compiles; that migrates in Task 5.
 - [ ] Step 5: Verify - Run: same command with `test` - Expected: `** TEST SUCCEEDED **`.
 - [ ] Step 6: Commit - `git commit -m "refactor: z.ai and DeepSeek read their keys from setting.json"`
@@ -569,7 +576,7 @@ The change is one storage-contract migration whose slices share `ProviderStore.s
 - Create: `Remaindr/Remaindr/Keychain/ClaudeCodeCredential.swift`
 - Modify: `Remaindr/Remaindr/Providers/ClaudeAccountUsage.swift` (anchor: `static func accessToken(keychain: KeychainStore) -> String?`, ~L29)
 - Modify: `Remaindr/Remaindr/Providers/ClaudeProvider.swift` (anchor: `init(keychain: KeychainStore = KeychainStore(),`, ~L32)
-- Modify: `Remaindr/Remaindr/Models/ProviderStatus.swift` (anchor: `enum ProviderError: Error, Equatable, Sendable {`, ~L50)
+- Modify: `Remaindr/Remaindr/Models/ProviderStatus.swift` (anchor: `enum ProviderError: Error, Equatable, Sendable {`, ~L43)
 - Modify: `Remaindr/Remaindr/UI/ProviderStore.swift` (anchor: `case .claude:` inside `provider(for:)`, ~L34)
 - Test: `Remaindr/RemaindrTests/ClaudeAccountUsageTests.swift`
 
@@ -616,7 +623,6 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
               var result: CFTypeRef?
               guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
                     let data = result as? Data,
-                    let text = String(data: data, encoding: .utf8),
                     let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
                     let oauth = root["claudeAiOauth"] as? [String: Any],
                     let token = oauth["accessToken"] as? String,
@@ -886,7 +892,7 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
           }
       }
       ```
-- [ ] Step 7: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -3` - Expected: `** TEST SUCCEEDED **`; `ClaudeAccountUsageTests` executes 7 tests, 0 failures; all earlier suites still green. `SettingsView` still compiles against the not-yet-deleted `KeychainStore`.
+- [ ] Step 7: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -3` - Expected: `** TEST SUCCEEDED **` and the aggregate line `Executed 40 tests, with 0 failures` (33 from after Task 1 + 7 new `ClaudeAccountUsageTests`; `tail -3` shows the aggregate, not per-suite names). `SettingsView` still compiles against the not-yet-deleted `KeychainStore`.
 - [ ] Step 8: Commit - `git commit -m "feat: Claude account source connects once, saves the token, and locks out after failed recovery"`
 
 #### Task 5: Settings UI on `SettingStore`; `KeychainStore` deleted
@@ -1035,7 +1041,7 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
       - Item at ~L65: the decision item "stop reading Claude Code's foreign keychain credential in favor of an explicit user-pasted token (audit F-08; deliberately kept because removing it deletes a feature)" is now resolved differently - mark it `[x]` and append "; resolved 2026-08-19: the credential is still read, but only by the manual Connect action and one expiry retry, at most twice per connection cycle."
 - [ ] Step 4: `SECURITY_AUDIT.md`: insert a dated addendum immediately under the title:
       "**Addendum 2026-08-19 (owner decision):** credential storage moved from the login Keychain to `~/.remaindr/setting.json` (directory 0700, file 0600). The threat-model trade is explicit: any process running as the user can now read z.ai/DeepSeek keys and the Claude OAuth token from the file, where the keychain ACL previously gated reads behind a prompt. Accepted in exchange for eliminating all periodic keychain prompts. F-03's remediation (accessibility class) is superseded for this app's own items; F-08 is narrowed - the foreign `Claude Code-credentials` item is still read, but only on the manual Connect action and one expiry retry, at most twice per connection cycle."
-- [ ] Step 5: Verify - Run: `grep -n "Keychain" README.md AGENTS.md FUTURE_FEATURES.md | grep -vi "ClaudeCodeCredential\|Connect\|Keychain Access\|login keychain password\|Keychain is read only\|one Keychain read"` - Expected: exactly two output lines, both bare tree lines reading `  Keychain/` (one in AGENTS.md's architecture tree, one in README.md's project structure - the directory keeps its name). Any other line means a Keychain mention survived unedited.
+- [ ] Step 5: Verify - Run: `grep -n "Keychain" README.md AGENTS.md FUTURE_FEATURES.md | grep -vi "ClaudeCodeCredential\|Connect\|Keychain Access\|login keychain password\|Keychain is read only\|one Keychain read"` - Expected: every output line is exactly a tree line reading `  Keychain/` (at most two: the AGENTS.md architecture tree and the README.md project structure - the directory keeps its name). Any prose line in the output means a Keychain mention survived unedited: reword that sentence to describe the Connect flow (the intended surviving context) rather than loosening the grep.
 - [ ] Step 6: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData build SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -2` - Expected: `** BUILD SUCCEEDED **` (docs cannot break the build; this guards against accidental source edits).
 - [ ] Step 7: Commit - `git commit -m "docs: document setting.json credential storage and the Claude Connect flow"`
 
@@ -1051,7 +1057,7 @@ Run after all tasks are merged, from the repo root.
 
 - [ ] Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -3` - Expected: `** TEST SUCCEEDED **` with 40 total tests (27 pre-existing + 6 `SettingStoreTests` + 7 `ClaudeAccountUsageTests`), 0 failures.
 - [ ] Manual: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -configuration Release -destination 'platform=macOS' -derivedDataPath build/DerivedData build > /dev/null 2>&1 && open build/DerivedData/Build/Products/Release/Remaindr.app && sleep 5 && stat -f '%Sp %N' ~/.remaindr ~/.remaindr/setting.json` - Expected: `drwx------ .../.remaindr` and `-rw------- .../setting.json`; because this machine carries the legacy dotfile, `test -f ~/.remaindr.old && echo migrated` also prints `migrated`, and `python3 -c "import json,os; json.load(open(os.path.expanduser('~/.remaindr/setting.json'))); print('valid json')"` prints `valid json` with the previous refresh interval preserved (check with `python3 -c "import json,os; print(json.load(open(os.path.expanduser('~/.remaindr/setting.json'))).get('refreshIntervalMinutes'))"` - it must equal the pre-launch value from Preflight). Quit the app afterwards (`osascript -e 'quit app "Remaindr"'`).
-  Rollback (runtime, not git): this launch migrates the real `~/.remaindr` dotfile on this machine. To undo by hand, quit the app first, then `rm -rf ~/.remaindr && mv ~/.remaindr.old ~/.remaindr`.
+  Rollback (runtime, not git): the real `~/.remaindr` dotfile on this machine gets migrated at the first app launch after Task 2 - which, because the tests are hosted, is Task 2's own `xcodebuild test` run, not this Release launch. To undo by hand, quit the app first, then `rm -rf ~/.remaindr && mv ~/.remaindr.old ~/.remaindr`.
 - [ ] Manual: `grep -c "KeychainStore\|SecretCache" $(find Remaindr/Remaindr -name '*.swift') | grep -v ':0' ; echo "exit=$?"` - Expected: no file lists a nonzero count; `exit=1`.
 - [ ] 👤 Human: open Settings, paste a real z.ai key, click Save - Expected: the z.ai row shows the green "Set" badge, and the dropdown's z.ai row stops saying "Not configured" after a refresh - Proxy: `Remaindr/RemaindrTests/SettingStoreTests.testRoundTripKeepsValuesAcrossInstances` proves the save path, and after the human acts the agent runs `python3 -c "import json,os; print('zai' in json.load(open(os.path.expanduser('~/.remaindr/setting.json'))).get('apiKeys', {}))"` and expects `True` (presence only - the key value is never printed).
 - [ ] 👤 Human: in Settings, click Connect under Claude - Expected: at most one login-keychain password prompt (answer it), then the badge shows "Connected" in green, and the Claude row in the dropdown shows plan-limit percentages again - Proxy: `ClaudeAccountUsageTests` proves the whole connect/retry/invalid state machine without the keychain, and after the human acts the agent runs `python3 -c "import json,os; o=json.load(open(os.path.expanduser('~/.remaindr/setting.json'))).get('claudeOAuth',{}); print(bool(o.get('accessToken')) and not o.get('invalid'))"` and expects `True` (shape only - the token is never printed).
