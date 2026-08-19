@@ -241,7 +241,7 @@ The signing identity and the notary profile live only in a temporary keychain on
 | Collapsed label missing | No provider is currently selected to drive it, or all providers are unconfigured |
 | macOS asks for your login keychain password | Expected once per key after installing or updating the app - see below |
 | App doesn't appear in Dock | Expected — this is a menu-bar-only (`LSUIElement`) app by design |
-| "Remaindr" Not Opened / Apple could not verify | Un-notarized pre-release - run `xattr -cr /Applications/Remaindr.app` once, see [Opening an un-notarized build](#installation) |
+| "Remaindr" Not Opened / Apple could not verify | Un-notarized pre-release - run `xattr -cr /Applications/Remaindr.app` once, see [Opening an un-notarized build](#opening-an-un-notarized-build) |
 
 ### Why macOS asks for the keychain password
 
