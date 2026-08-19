@@ -136,12 +136,11 @@ jobs:
             test -f "build/Remaindr-${TAG}.dmg.sha256"
             ls -l "build/Remaindr-${TAG}.dmg" "build/Remaindr-${TAG}.dmg.sha256"
           else
-            # No sidecar is expected on an un-notarized build; publishing one
-            # would forge the notarized-release marker.
-            test ! -e "build/Remaindr-${TAG}.dmg.sha256" || {
-              echo "ERROR: un-notarized build must not ship a .sha256 sidecar." >&2
-              exit 1
-            }
+            # make-dmg.sh writes the sidecar on every run for local
+            # verifiability, but an un-notarized release must not publish it:
+            # a published sidecar is the marker of a notarized release. Delete
+            # it here so the publish step cannot upload it even by mistake.
+            rm -f "build/Remaindr-${TAG}.dmg.sha256"
             ls -l "build/Remaindr-${TAG}.dmg"
           fi
 
