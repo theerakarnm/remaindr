@@ -453,7 +453,7 @@ The change is one storage-contract migration whose slices share `ProviderStore.s
           }
       }
       ```
-- [ ] Step 3: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -3` - Expected: `** TEST SUCCEEDED **` with `SettingStoreTests` in the executed suites (6 new tests) and the pre-existing 27 tests still passing.
+- [x] Step 3: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -3` - Expected: `** TEST SUCCEEDED **` with `SettingStoreTests` in the executed suites (6 new tests) and the pre-existing 27 tests still passing.
 - [ ] Step 4: Commit - `git commit -m "feat: add SettingStore owning ~/.remaindr/setting.json with 0700/0600 modes"`
 
 #### Task 2: `Preferences` on `SettingStore`; dotfile store deleted
