@@ -1,5 +1,11 @@
 # SECURITY_AUDIT.md - Security Audit Report
 
+**Addendum 2026-08-19 (owner decision):** credential storage moved from the login Keychain to `~/.remaindr/setting.json` (directory 0700, file 0600).
+The threat-model trade is explicit: any process running as the user can now read z.ai/DeepSeek keys and the Claude OAuth token from the file, where the keychain ACL previously gated reads behind a prompt.
+Accepted in exchange for eliminating all periodic keychain prompts.
+F-03's remediation (accessibility class) is superseded for this app's own items.
+F-08 is narrowed - the foreign `Claude Code-credentials` item is still read, but only by the manual Connect action (at most two reads) plus at most one automatic re-read per token expiry, with a lockout flag stopping further reads until the user reconnects.
+
 **Project:** Remaindr (macOS SwiftUI menu bar usage monitor for Claude, z.ai/GLM, DeepSeek)
 **Repo root:** `/Users/jametirakarn/Desktop/Theerakarnm/remaindr`
 **Audit type:** read-only static audit of all 19 Swift sources, `project.pbxproj`, `make-dmg.sh`, generated entitlements/Info.plists, and the built Release artifacts under `build/` (signature and strings inspection only; nothing was built, run, or executed).

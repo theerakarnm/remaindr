@@ -11,7 +11,7 @@ Guidance for Claude Code when working in this repository.
 - Swift 6, SwiftUI, macOS 14+ (Sonoma)
 - `MenuBarExtra` with `.menuBarExtraStyle(.window)`
 - `URLSession` + `async/await` for networking — no third-party packages
-- Keychain Services (via `Security` framework) for credential storage
+- One `Security` framework call (`ClaudeCodeCredential`) that copies Claude Code's OAuth token into `setting.json` on Connect
 - No backend, no analytics, no telemetry
 
 ## Architecture
@@ -26,8 +26,9 @@ Remaindr/
     DeepSeekProvider.swift
   Models/
     ProviderStatus.swift # shared status struct returned by every provider
+    SettingStore.swift   # owns ~/.remaindr/setting.json
   Keychain/
-    KeychainStore.swift  # read/write wrapper, no plaintext fallback
+    ClaudeCodeCredential.swift  # the one Keychain read (Claude Connect)
   UI/
     MenuBarLabel.swift    # collapsed label view
     DropdownPanel.swift   # per-provider rows
@@ -44,9 +45,10 @@ Every provider client sits behind the `UsageProvider` protocol and returns a com
   1. Primary: `GET https://api.anthropic.com/api/oauth/usage` (headers `Authorization: Bearer`, `anthropic-beta: oauth-2025-04-20`), the same source `/usage` uses.
      It reports `five_hour.utilization`/`resets_at` and `seven_day.*`.
      Newer accounts carry the same windows in `limits[]` as kind `session`/`weekly_all`.
-     Authenticated with the OAuth credential Claude Code stores in the login Keychain under service `Claude Code-credentials` (blob key `claudeAiOauth.accessToken`).
+     Authenticated with the OAuth token the Connect action copied out of Claude Code's Keychain item (service `Claude Code-credentials`, blob key `claudeAiOauth.accessToken`) into `setting.json`.
+     Lifecycle: Connect reads the Keychain once and saves the token; refreshes use the saved token; after a 401 the app re-reads the Keychain once and retries; if that fails too, an `invalid` flag stops all automatic Keychain reads until the user signs in to Claude Code and clicks Connect again.
      Read-only; it does not consume plan usage.
-     The token is never logged or persisted.
+     The token is never logged.
   2. Fallback: parse local session files at `~/.claude/projects/**/*.jsonl`, aggregate token usage into rolling 5-hour blocks (ccusage-style).
   3. Last resort: if an API key is present, read `anthropic-ratelimit-*` response headers from a cheap request, or the Admin usage endpoint if an admin key is configured.
   4. If none is available: render "Not configured." Never fabricate a number.
@@ -55,7 +57,9 @@ Every provider client sits behind the `UsageProvider` protocol and returns a com
 
 ## Hard rules
 
-- API keys live in the macOS Keychain only. Never `UserDefaults`, never plaintext, never logged, never committed.
+- Credentials (API keys and the Claude OAuth token) live in `~/.remaindr/setting.json` only: directory mode 0700, file mode 0600.
+  Never `UserDefaults`, never logged, never committed.
+  The macOS Keychain is read only by `ClaudeCodeCredential.readAccessToken()`: at most twice per Connect action, plus at most one automatic re-read per token expiry; a failed re-read locks out further reads until the user clicks Connect again.
 - No third-party Swift packages. If one seems genuinely needed, stop and ask before adding it.
 - One provider failing must never blank or zero out the others. Show a stale value plus a visible error indicator instead.
 - Never invent an endpoint path, field name, or response shape you haven't verified. If you can't verify something, implement it against a clearly marked assumption and flag it rather than guessing silently.

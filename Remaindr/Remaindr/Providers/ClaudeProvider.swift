@@ -3,7 +3,8 @@ import Foundation
 /// Claude has three sources, in order:
 ///  1. the account usage endpoint (`/api/oauth/usage`), which reports the exact
 ///     percentages Claude Code itself shows in `/usage`, authenticated with the OAuth
-///     credential Claude Code already stores in the login Keychain;
+///     token the Connect action copied out of Claude Code's Keychain item into
+///     setting.json;
 ///  2. local session files under `~/.claude/projects/**/*.jsonl`, aggregated into rolling
 ///     5-hour blocks, used whenever the account source is unavailable;
 ///  3. `anthropic-ratelimit-*` response headers, but only when the user has explicitly
@@ -13,7 +14,7 @@ import Foundation
 struct ClaudeProvider: UsageProvider {
     let kind: ProviderKind = .claude
 
-    private let keychain: KeychainStore
+    private let settings: SettingStore
     private let session: URLSession
     private let projectsDirectory: URL
     /// Off unless the user turns it on in Settings. A probe request is billed.
@@ -29,26 +30,37 @@ struct ClaudeProvider: UsageProvider {
             .appendingPathComponent("projects", isDirectory: true)
     }
 
-    init(keychain: KeychainStore = KeychainStore(),
+    init(settings: SettingStore = .shared,
          session: URLSession = .shared,
          projectsDirectory: URL = ClaudeProvider.defaultProjectsDirectory,
          allowBilledProbe: Bool = false) {
-        self.keychain = keychain
+        self.settings = settings
         self.session = session
         self.projectsDirectory = projectsDirectory
         self.allowBilledProbe = allowBilledProbe
     }
 
     func fetch(now: Date) async throws -> ProviderStatus {
-        // The account endpoint is the only source that knows the real plan limits, so it
-        // goes first. Every way it can fail (no signed-in credential, offline, expired
-        // token, server hiccup) means "fall through to the next source", not "error out".
+        // Door 1: the account endpoint, authenticated with the token the Connect
+        // action saved. Unavailable (never connected, or locked out as invalid)
+        // simply means "fall through", exactly like every other account failure.
         // An untrusted server is the exception: surfacing it is the only way a pin
-        // failure becomes visible instead of silently downgrading to the local estimate.
+        // failure becomes visible instead of silently downgrading.
         do {
             return try await accountUsageStatus(now: now)
         } catch ProviderError.untrustedServer {
             throw ProviderError.untrustedServer
+        } catch ProviderError.unauthorized {
+            // The saved token was rejected. One Keychain re-read, one retry; if
+            // either fails the connection is marked invalid and automatic
+            // Keychain reads stop until the user clicks Connect again.
+            if let fresh = ClaudeAccountUsage.recoverExpiredToken(settings: settings) {
+                if let status = try? await accountUsage(withToken: fresh, now: now) {
+                    return status
+                }
+                // The rotated token was rejected too: the second failed beg.
+                ClaudeAccountUsage.markConnectionInvalid(in: settings)
+            }
         } catch {
         }
 
@@ -62,19 +74,35 @@ struct ClaudeProvider: UsageProvider {
             return status
         }
 
-        guard allowBilledProbe, let key = try keychain.value(for: kind), !key.isEmpty else {
+        guard allowBilledProbe, let key = settings.apiKey(for: kind), !key.isEmpty else {
+            let oauth = settings.claudeOAuth
+            if let invalid = oauth.invalid, invalid, oauth.accessToken != nil {
+                throw ProviderError.reconnectRequired
+            }
             throw ProviderError.notConfigured
         }
         return try await probeHeaders(key: key, now: now)
     }
 
+    /// Reads the token saved by Connect. Absent or flagged invalid both throw, which
+    /// the caller treats as "account source unavailable, fall through" - never as an
+    /// error for the user (the reconnect-required signal is raised only at the very
+    /// end of fetch, after every source has failed).
+    private func accountUsageStatus(now: Date) async throws -> ProviderStatus {
+        let oauth = settings.claudeOAuth
+        guard let token = oauth.accessToken, !(oauth.invalid ?? false) else {
+            throw ProviderError.notConfigured
+        }
+        return try await accountUsage(withToken: token, now: now)
+    }
+
     /// Turns the account usage payload into the status the UI draws. The 5-hour percent
     /// drives the primary meter and reset countdown; the weekly limit, when the account
     /// reports one, rides along as the stacked back layer.
-    private func accountUsageStatus(now: Date) async throws -> ProviderStatus {
+    private func accountUsage(withToken token: String, now: Date) async throws -> ProviderStatus {
         let usage: ClaudeAccountUsage
         do {
-            usage = try await ClaudeAccountUsage.fetch(keychain: keychain, session: session)
+            usage = try await ClaudeAccountUsage.fetch(token: token, session: session)
         } catch {
             throw mapTransportFailure(error)
         }

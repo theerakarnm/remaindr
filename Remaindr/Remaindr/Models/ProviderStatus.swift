@@ -27,9 +27,10 @@ enum ProviderKind: String, CaseIterable, Sendable, Identifiable {
         }
     }
 
-    /// Keychain account name. Claude only reads this when the billed header probe is on;
-    /// its primary source is the account usage endpoint, authenticated with the OAuth
-    /// credential Claude Code itself stores.
+    /// Credential key in setting.json (a historical name: these strings were the
+    /// Keychain account names before credentials moved to the config file).
+    /// Claude's entry is the billed-header-probe API key; its primary source is
+    /// the OAuth token stored by the Connect action.
     var keychainAccount: String? {
         switch self {
         case .claude: return "anthropic"
@@ -50,6 +51,9 @@ enum ProviderError: Error, Equatable, Sendable {
     case noActivePlan
     /// The server's certificate chain did not match a pinned certificate.
     case untrustedServer
+    /// The saved Claude OAuth token was rejected and re-reading the Keychain did not
+    /// help. The user must sign in to Claude Code and click Connect again in Settings.
+    case reconnectRequired
 
     /// Short text shown next to a stale value. Never contains a key or a token.
     var shortDescription: String {
@@ -62,6 +66,7 @@ enum ProviderError: Error, Equatable, Sendable {
         case .serverError(let status): return "Server error \(status)"
         case .noActivePlan: return "No active plan"
         case .untrustedServer: return "Connection untrusted"
+        case .reconnectRequired: return "Reconnect Claude in Settings"
         }
     }
 }

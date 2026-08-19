@@ -5,9 +5,9 @@ import Foundation
 /// `/usage`, which is the whole point: a locally synthesized percentage can never match
 /// the server's rolling 5-hour window, and every local approximation drifts.
 ///
-/// Authentication reuses the OAuth credential Claude Code already stores in the login
-/// Keychain, so the user configures nothing. The token is read, used for one GET, and
-/// never stored, logged, or surfaced anywhere else.
+/// Authentication uses the OAuth token the manual Connect action copied out of Claude
+/// Code's Keychain item into setting.json. The token is used for one GET and is never
+/// logged or surfaced anywhere else; `ClaudeCodeCredential` is the only Keychain reader.
 struct ClaudeAccountUsage: Sendable, Equatable {
     /// 0...1 of the account's 5-hour session limit already spent.
     let fiveHourUsedFraction: Double
@@ -16,33 +16,9 @@ struct ClaudeAccountUsage: Sendable, Equatable {
     /// have none, which is nil rather than an invented number.
     let weekly: ProviderWeeklyUsage?
 
-    /// The Keychain service Claude Code stores its credential blob under.
-    static let credentialService = "Claude Code-credentials"
-
-    enum AccountUsageError: Error {
-        /// No signed-in Claude Code credential (or the blob has no access token yet).
-        case noCredential
-    }
-
-    /// Reads the OAuth access token out of the credential blob Claude Code maintains.
-    /// Any failure simply means "no account source available" and the caller falls back.
-    static func accessToken(keychain: KeychainStore) -> String? {
-        guard let blob = (try? keychain.foreignValue(service: credentialService)) ?? nil,
-              let data = blob.data(using: .utf8),
-              let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-              let oauth = root["claudeAiOauth"] as? [String: Any],
-              let token = oauth["accessToken"] as? String,
-              !token.isEmpty
-        else { return nil }
-        return token
-    }
-
     /// One read-only GET. The endpoint answers with percentages for the rolling
     /// 5-hour session limit and the weekly limit; it does not consume plan usage.
-    static func fetch(keychain: KeychainStore, session: URLSession) async throws -> ClaudeAccountUsage {
-        guard let token = accessToken(keychain: keychain) else {
-            throw AccountUsageError.noCredential
-        }
+    static func fetch(token: String, session: URLSession) async throws -> ClaudeAccountUsage {
         var request = URLRequest(url: URL(string: "https://api.anthropic.com/api/oauth/usage")!)
         request.httpMethod = "GET"
         request.timeoutInterval = 15
@@ -61,11 +37,6 @@ struct ClaudeAccountUsage: Sendable, Equatable {
         switch http.statusCode {
         case 200: break
         case 401, 403:
-            // Claude Code rotates this token, and `foreignValue` caches for the lifetime
-            // of the process so it costs at most one Keychain prompt. Dropping the cached
-            // copy here is what keeps that cache from replaying a token the server has
-            // already rejected: the next refresh re-reads the blob instead.
-            keychain.invalidateForeign(service: credentialService)
             throw ProviderError.unauthorized
         case 429:
             let retryAfter = http.value(forHTTPHeaderField: "retry-after").flatMap(TimeInterval.init)
@@ -76,6 +47,55 @@ struct ClaudeAccountUsage: Sendable, Equatable {
             throw ProviderError.malformedResponse("no five_hour bucket")
         }
         return usage
+    }
+
+    /// The manual Connect action. Keychain read #1; if the server rejects that
+    /// token, Keychain read #2; if that still cannot call the API, the stored token
+    /// is marked invalid and the user is told to sign in to Claude Code and click
+    /// Connect again. Returns true when the account source is usable right now.
+    static func connect(settings: SettingStore,
+                        readCredential: () -> String? = ClaudeCodeCredential.readAccessToken,
+                        verify: @Sendable (String) async -> Bool) async -> Bool {
+        guard let first = readCredential() else {
+            markConnectionInvalid(in: settings)
+            return false
+        }
+        settings.setClaudeOAuth(ClaudeOAuthSetting(accessToken: first, invalid: false))
+        if await verify(first) { return true }
+        guard let second = readCredential() else {
+            markConnectionInvalid(in: settings)
+            return false
+        }
+        settings.setClaudeOAuth(ClaudeOAuthSetting(accessToken: second, invalid: false))
+        if await verify(second) { return true }
+        markConnectionInvalid(in: settings)
+        return false
+    }
+
+    /// The one automatic Keychain re-read, run only after the server rejected the
+    /// saved token. A nil return means "give up": no credential, the connection is
+    /// already locked out, or the Keychain still holds the same token Claude Code
+    /// has not rotated yet - retrying that would burn a Keychain prompt every
+    /// refresh interval, the exact storm this project fixed once already. Every
+    /// give-up path marks the connection invalid here, so no caller has to remember to.
+    static func recoverExpiredToken(settings: SettingStore,
+                                    readCredential: () -> String? = ClaudeCodeCredential.readAccessToken) -> String? {
+        let stored = settings.claudeOAuth
+        guard let oldToken = stored.accessToken, !(stored.invalid ?? false) else { return nil }
+        guard let fresh = readCredential(), fresh != oldToken else {
+            markConnectionInvalid(in: settings)
+            return nil
+        }
+        settings.setClaudeOAuth(ClaudeOAuthSetting(accessToken: fresh, invalid: false))
+        return fresh
+    }
+
+    /// Internal rather than private: `ClaudeProvider` calls it after a recovered
+    /// token is itself rejected by the server - the second failed beg that ends
+    /// the cycle.
+    static func markConnectionInvalid(in settings: SettingStore) {
+        let stored = settings.claudeOAuth
+        settings.setClaudeOAuth(ClaudeOAuthSetting(accessToken: stored.accessToken, invalid: true))
     }
 
     /// Pulls the 5-hour and weekly percentages out of the response. Older accounts carry

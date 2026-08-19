@@ -36,7 +36,7 @@ If you're paying for or metering usage across multiple AI providers, checking "h
 - 🖥️ **Native menu bar app** — SwiftUI `MenuBarExtra`, no Dock icon, no separate window unless you open Settings
 - 📊 **One row per provider** — Claude, z.ai (GLM), DeepSeek — each rendered according to what that provider actually reports
 - 🔁 **Auto-refresh** — configurable interval (1–60 min), plus manual refresh
-- 🔒 **Keychain-backed credentials** — API keys are never stored in plaintext or in `UserDefaults`
+- 🔒 **Config-file credentials** - API keys live in `~/.remaindr/setting.json` (0700 directory, 0600 file), never in `UserDefaults`
 - ⚠️ **Graceful degradation** — if one provider fails or is unconfigured, the other two keep working; failures show a stale value plus an error indicator, never a fake zero
 - 🚀 **Launch at login** — optional
 - 🆕 **Update check** — compares the running version against the latest GitHub release once a day and links to the release page; it never downloads or installs anything
@@ -102,10 +102,13 @@ Delete it and download again rather than opening it.
 ## Setup
 
 1. Click the menu bar icon → **Settings**.
-2. For each provider you want to track, paste the API key. Keys are written straight to the Keychain — nothing is saved until you do this.
-3. Choose which provider drives the collapsed menu bar label (default: whichever is closest to its limit).
-4. Set your refresh interval (default: 5 minutes).
-5. Optionally enable **Launch at Login**.
+2. For each provider you want to track, paste the API key.
+   Keys are written to `~/.remaindr/setting.json` (mode 0600, inside a 0700 directory) - nothing is saved until you do this.
+3. For Claude's exact plan-limit numbers, click **Connect** once.
+   macOS may ask for the login keychain password (at most twice); after that the app uses the saved token.
+4. Choose which provider drives the collapsed menu bar label (default: whichever is closest to its limit).
+5. Set your refresh interval (default: 5 minutes).
+6. Optionally enable **Launch at Login**.
 
 Providers with no key configured simply show "Not configured" and are skipped on refresh — you don't need all three set up to use the app.
 
@@ -118,7 +121,8 @@ Providers with no key configured simply show "Not configured" and are skipped on
 
 ## Privacy & security
 
-- API keys are stored exclusively in the macOS Keychain, scoped to this app.
+- API keys and the Claude OAuth token are stored in `~/.remaindr/setting.json` only: directory mode 0700, file mode 0600.
+  The trade is explicit: a process running as your user can read that file, where the keychain ACL previously gated reads behind a prompt - accepted in exchange for zero periodic keychain prompts.
 - No usage data, keys, or telemetry are sent anywhere except directly to each provider's own API, using your own key.
 - The update check is a single unauthenticated `GET` to `api.github.com` that sends no key, no account identifier, and no usage data (only the default `URLSession` user agent, which carries the app and OS version); the download link it shows is a fixed URL compiled into the app, never one read out of the response.
 - Claude's local-log reading only parses token counts and timestamps from `~/.claude/projects/` — it does not read prompt or response content.
@@ -136,8 +140,9 @@ Remaindr/
     DeepSeekProvider.swift
   Models/
     ProviderStatus.swift  # common status struct returned by every provider
+    SettingStore.swift    # owns ~/.remaindr/setting.json
   Keychain/
-    KeychainStore.swift   # read/write wrapper, no plaintext fallback
+    ClaudeCodeCredential.swift  # the one Keychain read (Claude Connect)
   Update/
     AppVersion.swift      # dotted version parse + compare
     UpdateChecker.swift   # latest GitHub release lookup
@@ -151,7 +156,7 @@ Remaindr/
     RefreshScheduler.swift
 ```
 
-See [`CLAUDE.md`](./CLAUDE.md) for the fuller architectural rules this project is built against (provider protocol boundaries, Keychain-only rule, etc.) — useful context whether you're a human contributor or an AI coding assistant.
+See [`CLAUDE.md`](./CLAUDE.md) for the fuller architectural rules this project is built against (provider protocol boundaries, the setting.json credential rule, etc.) - useful context whether you're a human contributor or an AI coding assistant.
 
 ## Building from source
 
@@ -214,24 +219,21 @@ The signing identity and the notary profile live only in a temporary keychain on
 | Claude shows "Not configured" | No `~/.claude/projects/` logs found and no API/admin key set |
 | A provider shows a stale value with a warning icon | Last refresh failed (network, 401, 429) — check the key or your connection |
 | Collapsed label missing | No provider is currently selected to drive it, or all providers are unconfigured |
-| macOS asks for your login keychain password | Expected once per key after installing or updating the app - see below |
+| Claude shows Reconnect Claude in Settings | The saved token expired and re-reading it did not help - see below |
 | App doesn't appear in Dock | Expected — this is a menu-bar-only (`LSUIElement`) app by design |
 
-### Why macOS asks for the keychain password
+### Reconnecting Claude
 
-Remaindr reads three keychain items: your z.ai key, your DeepSeek key, and the OAuth
-credential Claude Code already stores. macOS asks you to authorise each item the first
-time a given build of the app reads it. Choose **Always Allow** and that build will not
-ask again.
+Remaindr shows **Reconnect Claude in Settings** when the saved OAuth token was
+rejected and the single automatic retry after Connect did not help.
+To fix it: open Claude Code (run `claude` and sign in) so it writes a fresh
+credential, then click **Connect** again in Remaindr's Settings.
+At most one login-keychain password prompt appears per Connect, twice at most
+in the failure case.
 
-Once releases are signed with a stable Developer ID certificate, macOS will record the grant
-against that identity and updating to a newer release will not ask again.
-That is not yet the case: no signing identity exists yet, so nothing published so far is
-Developer ID signed (see the Roadmap).
-A build you compiled yourself is ad-hoc signed, which ties the grant to that exact binary, so
-every local rebuild asks once more per key.
-
-If you are asked repeatedly *within a single run*, that is a bug - please open an issue.
+Versions before the setting.json change stored keys in the login keychain; open
+Keychain Access to delete the old items (service `com.theerakarn.Remaindr`).
+Those items are no longer read by this app.
 
 ## Roadmap
 

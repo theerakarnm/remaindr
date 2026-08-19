@@ -17,17 +17,17 @@ import Foundation
 struct ZAIProvider: UsageProvider {
     let kind: ProviderKind = .zai
 
-    private let keychain: KeychainStore
+    private let settings: SettingStore
     private let session: URLSession
     private static let endpoint = URL(string: "https://api.z.ai/api/monitor/usage/quota/limit")!
 
-    init(keychain: KeychainStore = KeychainStore(), session: URLSession = .shared) {
-        self.keychain = keychain
+    init(settings: SettingStore = .shared, session: URLSession = .shared) {
+        self.settings = settings
         self.session = session
     }
 
     func fetch(now: Date) async throws -> ProviderStatus {
-        guard let key = try keychain.value(for: kind), !key.isEmpty else {
+        guard let key = settings.apiKey(for: kind), !key.isEmpty else {
             throw ProviderError.notConfigured
         }
 

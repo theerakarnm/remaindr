@@ -9,10 +9,6 @@ struct RemaindrApp: App {
 
     init() {
         let preferences = Preferences()
-        if !preferences.keychainAccessibilityUpgraded {
-            KeychainStore().upgradeAccessibility()
-            preferences.keychainAccessibilityUpgraded = true
-        }
         let store = ProviderStore(preferences: preferences)
         let scheduler = RefreshScheduler(store: store, preferences: preferences)
         let updateStore = UpdateStore(preferences: preferences)
