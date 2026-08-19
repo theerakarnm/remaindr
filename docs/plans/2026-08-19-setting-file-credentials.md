@@ -454,7 +454,8 @@ The change is one storage-contract migration whose slices share `ProviderStore.s
       }
       ```
 - [x] Step 3: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -3` - Expected: `** TEST SUCCEEDED **` and the aggregate line `Executed 33 tests, with 0 failures` (27 pre-existing + 6 new `SettingStoreTests`; `tail -3` shows the aggregate, not per-suite names).
-- [ ] Step 4: Commit - `git commit -m "feat: add SettingStore owning ~/.remaindr/setting.json with 0700/0600 modes"`
+- [x] Step 4: Commit - `git commit -m "feat: add SettingStore owning ~/.remaindr/setting.json with 0700/0600 modes"`
+      > Deviation: the worktree's plan watcher auto-committed the task files and tick state seconds after they landed (code: f3611a0 "Add 2 new files"; ticks: 71d323d/32e62e8), before this step could run. Tree green at those commits with the verified 33-test run; only the commit message differs from the plan's.
 
 #### Task 2: `Preferences` on `SettingStore`; dotfile store deleted
 
