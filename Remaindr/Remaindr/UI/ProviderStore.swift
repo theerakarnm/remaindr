@@ -32,7 +32,8 @@ final class ProviderStore {
     private func provider(for kind: ProviderKind) -> any UsageProvider {
         switch kind {
         case .claude:
-            return ClaudeProvider(session: PinnedSession.shared,
+            return ClaudeProvider(settings: settings,
+                                  session: PinnedSession.shared,
                                   allowBilledProbe: preferences.allowBilledClaudeProbe)
         case .zai:
             return ZAIProvider(settings: settings, session: PinnedSession.shared)
