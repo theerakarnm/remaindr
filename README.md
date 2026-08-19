@@ -182,15 +182,15 @@ Build must complete with zero warnings — this is enforced project convention, 
 ### Reconnecting Claude
 
 Remaindr shows **Reconnect Claude in Settings** when the saved OAuth token was
-rejected and re-reading it from the Keychain did not help.
+rejected and the single automatic retry after Connect did not help.
 To fix it: open Claude Code (run `claude` and sign in) so it writes a fresh
 credential, then click **Connect** again in Remaindr's Settings.
 At most one login-keychain password prompt appears per Connect, twice at most
 in the failure case.
 
-Versions before the setting.json change stored keys in the login Keychain
-under service `com.theerakarn.Remaindr`.
-Those items are no longer read and can be deleted in Keychain Access.
+Versions before the setting.json change stored keys in the login keychain; open
+Keychain Access to delete the old items (service `com.theerakarn.Remaindr`).
+Those items are no longer read by this app.
 
 ## Roadmap
 
