@@ -6,14 +6,14 @@ Nothing here is scheduled; pick an item, check it off when shipped, and move its
 
 Ground rules that still apply to every item below (see `AGENTS.md`):
 
-- API keys live in the macOS Keychain only, never in `UserDefaults`, plaintext, logs, or commits.
+- Credentials live in `~/.remaindr/setting.json` only (0700 directory, 0600 file), never in `UserDefaults`, logs, or commits. The Keychain is read only by the Claude Connect flow.
 - The UI talks to providers only through the `UsageProvider` protocol; a new provider must not require UI changes.
 - The collapsed menu bar label stays within roughly 14 characters no matter how many providers are active.
 - No third-party Swift packages; if one seems needed for an item, stop and ask first.
 
 ## Distribution & trust
 
-- [ ] Developer ID signed Release builds so keychain grants survive updates and `get-task-allow` never ships (audit F-01; blocked on obtaining a signing identity).
+- [ ] Developer ID signed Release builds so the Connect flow's keychain grant survives updates and `get-task-allow` never ships (audit F-01; blocked on obtaining a signing identity).
 - [x] Notarize and staple the DMG in `make-dmg.sh`, then remove the Gatekeeper-bypass wording from the README (audit F-02).
 - [x] Publish SHA-256 checksums alongside each release download.
 - [ ] Design and ship a real app icon asset catalog (menu bar glyph plus Settings window icon).
@@ -62,7 +62,7 @@ Ground rules that still apply to every item below (see `AGENTS.md`):
 ## Security hardening (deferred audit items)
 
 - [ ] Decision item: enable App Sandbox, which requires a user-granted folder bookmark or similar access to `~/.claude/projects` (audit F-07; deliberately not built because it breaks the local session read).
-- [ ] Decision item: stop reading Claude Code's foreign keychain credential in favor of an explicit user-pasted token (audit F-08; deliberately kept because removing it deletes a feature).
+- [x] Decision item: stop reading Claude Code's foreign keychain credential in favor of an explicit user-pasted token (audit F-08; deliberately kept because removing it deletes a feature); resolved 2026-08-19: the credential is still read, but only by the manual Connect action and one expiry retry, at most twice per connection cycle.
 
 ## Accessibility & localization
 
