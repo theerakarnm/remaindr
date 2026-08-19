@@ -8,12 +8,12 @@ import Foundation
 struct DeepSeekProvider: UsageProvider {
     let kind: ProviderKind = .deepseek
 
-    private let keychain: KeychainStore
+    private let settings: SettingStore
     private let session: URLSession
     private static let endpoint = URL(string: "https://api.deepseek.com/user/balance")!
 
-    init(keychain: KeychainStore = KeychainStore(), session: URLSession = .shared) {
-        self.keychain = keychain
+    init(settings: SettingStore = .shared, session: URLSession = .shared) {
+        self.settings = settings
         self.session = session
     }
 
@@ -29,7 +29,7 @@ struct DeepSeekProvider: UsageProvider {
     }
 
     func fetch(now: Date) async throws -> ProviderStatus {
-        guard let key = try keychain.value(for: kind), !key.isEmpty else {
+        guard let key = settings.apiKey(for: kind), !key.isEmpty else {
             throw ProviderError.notConfigured
         }
 

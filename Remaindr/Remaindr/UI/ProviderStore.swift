@@ -13,11 +13,11 @@ struct ProviderSlot: Equatable, Sendable {
 final class ProviderStore {
     private(set) var slots: [ProviderKind: ProviderSlot]
 
-    private let keychain: KeychainStore
+    private let settings: SettingStore
     private let preferences: Preferences
 
-    init(keychain: KeychainStore = KeychainStore(), preferences: Preferences) {
-        self.keychain = keychain
+    init(settings: SettingStore = .shared, preferences: Preferences) {
+        self.settings = settings
         self.preferences = preferences
         self.slots = Dictionary(uniqueKeysWithValues: ProviderKind.allCases.map { ($0, ProviderSlot()) })
     }
@@ -25,20 +25,19 @@ final class ProviderStore {
     /// True when at least one provider can produce a reading: any stored key, or a
     /// readable Claude projects directory.
     var anyConfigured: Bool {
-        if keychain.hasKey(for: .zai) || keychain.hasKey(for: .deepseek) { return true }
+        if settings.hasApiKey(for: .zai) || settings.hasApiKey(for: .deepseek) { return true }
         return FileManager.default.fileExists(atPath: ClaudeProvider.defaultProjectsDirectory.path)
     }
 
     private func provider(for kind: ProviderKind) -> any UsageProvider {
         switch kind {
         case .claude:
-            return ClaudeProvider(keychain: keychain,
-                                  session: PinnedSession.shared,
+            return ClaudeProvider(session: PinnedSession.shared,
                                   allowBilledProbe: preferences.allowBilledClaudeProbe)
         case .zai:
-            return ZAIProvider(keychain: keychain, session: PinnedSession.shared)
+            return ZAIProvider(settings: settings, session: PinnedSession.shared)
         case .deepseek:
-            return DeepSeekProvider(keychain: keychain, session: PinnedSession.shared)
+            return DeepSeekProvider(settings: settings, session: PinnedSession.shared)
         }
     }
 
