@@ -912,13 +912,13 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
 **Gotcha:** after this task nothing in the app may reference `KeychainStore` or `SecretCache`. `grep -rn "KeychainStore\|SecretCache" Remaindr/Remaindr --include="*.swift"` must return only hits inside `ClaudeCodeCredential.swift`'s own doc comment if any - ideally zero.
 
 **Steps:**
-- [ ] Step 1: In `SettingsView.swift`, replace `private let keychain = KeychainStore()` with `private let settings = SettingStore.shared` and add state for the Claude connection:
+- [x] Step 1: In `SettingsView.swift`, replace `private let keychain = KeychainStore()` with `private let settings = SettingStore.shared` and add state for the Claude connection:
       ```swift
       @State private var claudeConnected = false
       @State private var claudeInvalid = false
       @State private var isConnectingClaude = false
       ```
-- [ ] Step 2: Replace the Claude `LabeledContent("Claude")` block (anchor `Text("Reads ~/.claude/projects. No key needed.")`) with:
+- [x] Step 2: Replace the Claude `LabeledContent("Claude")` block (anchor `Text("Reads ~/.claude/projects. No key needed.")`) with:
       ```swift
       LabeledContent("Claude") {
           HStack {
@@ -982,7 +982,7 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
       }
       ```
       Call `reloadClaudeState()` in the existing `.onAppear` (anchor `savedKinds = Set(`).
-- [ ] Step 3: In the same file, swap every remaining `keychain` use: `statusBadge`'s two `.help` strings change "saved in Keychain" to "saved in setting.json" and "No \(kind.displayName) key saved" stays; `save(_:)` becomes
+- [x] Step 3: In the same file, swap every remaining `keychain` use: `statusBadge`'s two `.help` strings change "saved in Keychain" to "saved in setting.json" and "No \(kind.displayName) key saved" stays; `save(_:)` becomes
       ```swift
       private func save(_ kind: ProviderKind) {
           settings.setApiKey(draftKeys[kind] ?? "", for: kind)
@@ -1003,10 +1003,11 @@ Six files, one commit: this is a single contract slice. `ClaudeAccountUsage` sto
       }
       ```
       the `onAppear` line becomes `savedKinds = Set(ProviderKind.allCases.filter { settings.hasApiKey(for: $0) })`, and the two `message = "Could not save the key to the Keychain."` / `"Could not clear the key from the Keychain."` error lines are deleted (file writes through `SettingStore` cannot throw user-actionably here). The key row caption text stays as is otherwise.
-- [ ] Step 4: `git rm Remaindr/Remaindr/Keychain/KeychainStore.swift` (the `Keychain/` directory then contains only `ClaudeCodeCredential.swift`).
-- [ ] Step 5: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -3` - Expected: `** TEST SUCCEEDED **`.
-- [ ] Step 6: Verify - Run: `grep -rn "KeychainStore\|SecretCache" Remaindr/Remaindr --include="*.swift"; echo "exit=$?"` - Expected: no output and `exit=1` (zero references to the deleted types).
-- [ ] Step 7: Commit - `git commit -m "feat: Settings saves keys to setting.json and connects Claude once; delete KeychainStore"`
+- [x] Step 4: `git rm Remaindr/Remaindr/Keychain/KeychainStore.swift` (the `Keychain/` directory then contains only `ClaudeCodeCredential.swift`).
+- [x] Step 5: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData test SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -3` - Expected: `** TEST SUCCEEDED **`.
+- [x] Step 6: Verify - Run: `grep -rn "KeychainStore\|SecretCache" Remaindr/Remaindr --include="*.swift"; echo "exit=$?"` - Expected: no output and `exit=1` (zero references to the deleted types).
+- [x] Step 7: Commit - `git commit -m "feat: Settings saves keys to setting.json and connects Claude once; delete KeychainStore"`
+      > Deviation: auto-committed by the plan watcher before this step could run; verifies green at HEAD. Same pattern as Task 1 Step 4.
 
 #### Task 6: Documentation follows the new storage policy
 
