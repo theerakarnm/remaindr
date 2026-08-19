@@ -532,7 +532,7 @@ The change is one storage-contract migration whose slices share `ProviderStore.s
 - Produces (consumed by Task 5's UI and by this task's `ProviderStore`): `ZAIProvider.init(settings: SettingStore = .shared, session: URLSession = .shared)`, `DeepSeekProvider.init(settings: SettingStore = .shared, session: URLSession = .shared)`, `ProviderStore.init(settings: SettingStore = .shared, preferences: Preferences)`.
 
 **Steps:**
-- [ ] Step 1: In `ZAIProvider.swift`: change the stored property `private let keychain: KeychainStore` to `private let settings: SettingStore`; change the initializer to
+- [x] Step 1: In `ZAIProvider.swift`: change the stored property `private let keychain: KeychainStore` to `private let settings: SettingStore`; change the initializer to
       ```swift
       init(settings: SettingStore = .shared, session: URLSession = .shared) {
           self.settings = settings
@@ -547,8 +547,8 @@ The change is one storage-contract migration whose slices share `ProviderStore.s
       ```swift
           guard let key = settings.apiKey(for: kind), !key.isEmpty else {
       ```
-- [ ] Step 2: Apply the identical three edits to `DeepSeekProvider.swift` (same anchors: stored property `private let keychain: KeychainStore`, its `init`, and the `guard let key = try keychain.value(for: kind), !key.isEmpty else` line in `fetch`).
-- [ ] Step 3: In `ProviderStore.swift`: change `private let keychain: KeychainStore` to `private let settings: SettingStore`; change the initializer to
+- [x] Step 2: Apply the identical three edits to `DeepSeekProvider.swift` (same anchors: stored property `private let keychain: KeychainStore`, its `init`, and the `guard let key = try keychain.value(for: kind), !key.isEmpty else` line in `fetch`).
+- [x] Step 3: In `ProviderStore.swift`: change `private let keychain: KeychainStore` to `private let settings: SettingStore`; change the initializer to
       ```swift
       init(settings: SettingStore = .shared, preferences: Preferences) {
           self.settings = settings
@@ -568,9 +568,10 @@ The change is one storage-contract migration whose slices share `ProviderStore.s
                                     allowBilledProbe: preferences.allowBilledClaudeProbe)
       ```
       (Verified to typecheck: with this substitution the module compiles clean at the end of Task 3; `KeychainStore` itself survives until Task 5.)
-- [ ] Step 4: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData build SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -2` - Expected: `** BUILD SUCCEEDED **` - note: `SettingsView` still uses `KeychainStore` for save/clear badges and still compiles; that migrates in Task 5.
-- [ ] Step 5: Verify - Run: same command with `test` - Expected: `** TEST SUCCEEDED **`.
-- [ ] Step 6: Commit - `git commit -m "refactor: z.ai and DeepSeek read their keys from setting.json"`
+- [x] Step 4: Verify - Run: `xcodebuild -project Remaindr/Remaindr.xcodeproj -scheme Remaindr -destination 'platform=macOS' -derivedDataPath build/DerivedData build SWIFT_TREAT_WARNINGS_AS_ERRORS=YES 2>&1 | tail -2` - Expected: `** BUILD SUCCEEDED **` - note: `SettingsView` still uses `KeychainStore` for save/clear badges and still compiles; that migrates in Task 5.
+- [x] Step 5: Verify - Run: same command with `test` - Expected: `** TEST SUCCEEDED **`.
+- [x] Step 6: Commit - `git commit -m "refactor: z.ai and DeepSeek read their keys from setting.json"`
+      > Deviation: auto-committed by the plan watcher before this step could run; verifies green at HEAD. Same pattern as Task 1 Step 4.
 
 #### Task 4: Claude account source - Connect flow, saved token, invalid lockout
 
